@@ -1,0 +1,22 @@
+name: widget_preview 
+description: "A new Flutter project."
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+version: 0.0.1-dev
+
+environment:
+  sdk: ^3.4.0
+
+dependencies:
+  analyzer: any
+  code_builder: ^4.10.0
+  dart_style: ^2.3.6
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
