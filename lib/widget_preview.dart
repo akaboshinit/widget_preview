@@ -35,6 +35,11 @@ class WidgetPreviewerWindowConstraints extends InheritedWidget {
   }
 }
 
+/// Annotation used to mark functions that return widget previews.
+class Preview {
+  const Preview();
+}
+
 class WidgetPreview extends StatelessWidget {
   const WidgetPreview({
     super.key,
