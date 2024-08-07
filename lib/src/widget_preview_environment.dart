@@ -10,9 +10,9 @@ import 'package:analyzer/dart/analysis/analysis_context_collection.dart';
 import 'package:analyzer/dart/analysis/results.dart';
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/file_system/physical_file_system.dart';
+import 'package:code_builder/code_builder.dart' as builder;
 import 'package:dart_style/dart_style.dart';
 import 'package:logging/logging.dart';
-import 'package:code_builder/code_builder.dart' as builder;
 import 'package:watcher/watcher.dart';
 
 import 'flutter_tools_daemon.dart';
@@ -76,10 +76,9 @@ class WidgetPreviewEnvironment {
 
     logger.info(Uri(path: previewScaffoldProjectPath).resolve('lib/main.dart'));
     logger.info('Writing preview scaffolding entry point...');
-    await File(Uri(path: previewScaffoldProjectPath)
-            .resolve('lib/main.dart')
-            .toString())
-        .writeAsString(
+    await File(
+      Uri(path: previewScaffoldProjectPath).resolve('lib/main.dart').toString(),
+    ).writeAsString(
       widgetPreviewScaffold,
       mode: FileMode.write,
     );
@@ -91,7 +90,7 @@ class WidgetPreviewEnvironment {
       'pub',
       'add',
       '--directory=.dart_tool/preview_scaffold',
-      "widget_preview:{\"path\":\"../widget_preview\"}"
+      'widget_preview:{"path":"../widget_preview"}'
     ];
     // TODO(bkonyi): check exit code.
     await Process.run('flutter', args);
@@ -150,7 +149,7 @@ class WidgetPreviewEnvironment {
           for (final entity in unit.unit.childEntities) {
             if (entity is FunctionDeclaration &&
                 !entity.name.toString().startsWith('_')) {
-              bool foundPreview = false;
+              var foundPreview = false;
               for (final annotation in entity.metadata) {
                 if (annotation.name.name == 'Preview') {
                   // What happens if the annotation is applied multiple times?
@@ -159,13 +158,10 @@ class WidgetPreviewEnvironment {
                 }
               }
               if (foundPreview) {
-                logger.info('File path: ${Uri.file(filePath.toString())}');
+                logger.info('File path: ${filePath.asFilePath}');
                 logger.info('Preview function: ${entity.name}');
                 previews
-                    .putIfAbsent(
-                      Uri.file(filePath.toString()).toString(),
-                      () => <String>[],
-                    )
+                    .putIfAbsent(filePath.asFilePath, () => <String>[])
                     .add(entity.name.toString());
               }
             }
@@ -220,6 +216,7 @@ class WidgetPreviewEnvironment {
         final args = [
           'run',
           '--machine',
+          // ignore: lines_longer_than_80_chars
           '--use-application-binary=${PlatformUtils.prebuiltApplicationBinaryPath}',
           '--device-id=${PlatformUtils.getDeviceIdForPlatform()}',
         ];
@@ -249,7 +246,7 @@ class WidgetPreviewEnvironment {
       if (daemon.appId == null ||
           !event.path.endsWith('.dart') ||
           event.path.endsWith('generated_preview.dart')) return;
-      final path = Uri.file(event.path).toString();
+      final path = event.path.asFilePath;
       logger.info('Detected change in $path. Performing reload...');
 
       final filePreviews = _findPreviewFunctions(File(event.path))[path];

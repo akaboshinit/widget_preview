@@ -26,9 +26,9 @@ final logger = Logger.root
 Future<void> main(List<String> args) async {
   logger.level = Level.ALL;
 
-  Directory projectRoot = Directory.current;
+  var projectRoot = Directory.current;
   if (args.isNotEmpty) {
-    String arg = args.first;
+    var arg = args.first;
     // TODO(bkonyi): assert arg is a directory.
     projectRoot = Directory(arg);
   }

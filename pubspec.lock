@@ -110,6 +110,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.0.3"
+  dart_flutter_team_lints:
+    dependency: "direct dev"
+    description:
+      name: dart_flutter_team_lints
+      sha256: "091ced68bc78ae8002003065486fd052d556903ba6c68a4d47ca574c80e6013f"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.1.1"
   dart_style:
     dependency: "direct main"
     description:
@@ -147,14 +155,6 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
-  flutter_lints:
-    dependency: "direct dev"
-    description:
-      name: flutter_lints
-      sha256: "9e8c3858111da373efc5aa341de011d9bd23e2c5c5e0c62bccf32438e192d7b1"
-      url: "https://pub.dev"
-    source: hosted
-    version: "3.0.2"
   flutter_test:
     dependency: "direct dev"
     description: flutter

@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
 /// An [InheritedWidget] that propagates the current size of the
-/// [WidgetPreviewScaffold].
+/// WidgetPreviewScaffold.
 ///
 /// This is needed when determining how to put constraints on previewed widgets
 /// that would otherwise have infinite constraints.
@@ -71,6 +71,7 @@ class WidgetPreview extends StatelessWidget {
         border: Border.all(
           color: Colors.grey,
         ),
+        // TODO(bkonyi): figure out the best way to handle background colors.
         color: Colors.blue,
       ),
       child: _WidgetPreviewWrapper(
