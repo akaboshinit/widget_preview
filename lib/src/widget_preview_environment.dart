@@ -52,34 +52,34 @@ class WidgetPreviewEnvironment {
     // TODO(bkonyi): check for .dart_tool explicitly
     if (developmentMode) {
       final previewScaffoldProject = Directory(previewScaffoldProjectPath);
-      if (previewScaffoldProject.existsSync()) {
-        previewScaffoldProject.deleteSync(recursive: true);
+      if (await previewScaffoldProject.exists()) {
+        await previewScaffoldProject.delete(recursive: true);
       }
     }
-    if (Directory(previewScaffoldProjectPath).existsSync()) {
+    if (await Directory(previewScaffoldProjectPath).exists()) {
       logger.info('Preview scaffolding exists!');
       return;
     }
 
     // TODO(bkonyi): check exit code.
     logger.info('Creating $previewScaffoldProjectPath...');
-    Process.runSync('flutter', [
+    await Process.run('flutter', [
       'create',
       '--platforms=windows,linux,macos',
       '.dart_tool/preview_scaffold',
     ]);
 
-    if (!Directory(previewScaffoldProjectPath).existsSync()) {
+    if (!(await Directory(previewScaffoldProjectPath).exists())) {
       logger.severe('Could not create $previewScaffoldProjectPath!');
       throw StateError('Could not create $previewScaffoldProjectPath');
     }
 
     logger.info(Uri(path: previewScaffoldProjectPath).resolve('lib/main.dart'));
     logger.info('Writing preview scaffolding entry point...');
-    File(Uri(path: previewScaffoldProjectPath)
+    await File(Uri(path: previewScaffoldProjectPath)
             .resolve('lib/main.dart')
             .toString())
-        .writeAsStringSync(
+        .writeAsString(
       widgetPreviewScaffold,
       mode: FileMode.write,
     );
@@ -94,7 +94,7 @@ class WidgetPreviewEnvironment {
       "widget_preview:{\"path\":\"../widget_preview\"}"
     ];
     // TODO(bkonyi): check exit code.
-    Process.runSync('flutter', args);
+    await Process.run('flutter', args);
 
     // Generate an empty 'lib/generated_preview.dart'
     logger.info(
@@ -112,7 +112,7 @@ class WidgetPreviewEnvironment {
   Future<void> _initialBuild() async {
     await runInDirectoryScope(
       path: previewScaffoldProjectPath,
-      callback: () {
+      callback: () async {
         assert(Platform.isLinux || Platform.isMacOS || Platform.isWindows);
         final args = <String>[
           'build',
@@ -122,7 +122,7 @@ class WidgetPreviewEnvironment {
           '--debug',
         ];
         // TODO(bkonyi): check exit code.
-        Process.runSync('flutter', args);
+        await Process.run('flutter', args);
       },
     );
   }

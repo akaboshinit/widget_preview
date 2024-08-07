@@ -71,6 +71,7 @@ class WidgetPreview extends StatelessWidget {
         border: Border.all(
           color: Colors.grey,
         ),
+        color: Colors.blue,
       ),
       child: _WidgetPreviewWrapper(
         previewerConstraints: maxSizeConstraints,
