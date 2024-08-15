@@ -52,8 +52,9 @@ abstract class PlatformUtils {
 }
 
 extension StringUtils on String {
-  String get withNoTrailingNewLine =>
-      endsWith('\n') ? substring(0, length - 1) : this;
+  String get withNoTrailingNewLine => endsWith(Platform.lineTerminator)
+      ? substring(0, length - Platform.lineTerminator.length)
+      : this;
 
   String get asFilePath => Uri.file(this).toString();
 }

@@ -22,7 +22,7 @@ import 'widget_preview_scaffold.dart';
 /// Clears preview scaffolding state on each run.
 ///
 /// Set to false for release.
-const developmentMode = true;
+const developmentMode = false;
 
 const previewScaffoldProjectPath = '.dart_tool/preview_scaffold/';
 
@@ -31,6 +31,7 @@ final logger = Logger.root;
 typedef PreviewMapping = Map<String, List<String>>;
 
 class WidgetPreviewEnvironment {
+  late final String _vmServiceInfoPath;
   final _pathToPreviews = PreviewMapping();
   StreamSubscription<WatchEvent>? _fileWatcher;
 
@@ -210,6 +211,10 @@ class WidgetPreviewEnvironment {
 
   Future<void> _runPreviewEnvironment() async {
     final projectDir = Directory.current.uri.toFilePath();
+    final tempDir = await Directory.systemTemp.createTemp();
+    // TODO(bkonyi): use package:path
+    _vmServiceInfoPath = '${tempDir.path}${Platform.pathSeparator}'
+        'preview_vm_service.json';
     final process = await runInDirectoryScope<Process>(
       path: previewScaffoldProjectPath,
       callback: () async {
@@ -219,6 +224,7 @@ class WidgetPreviewEnvironment {
           // ignore: lines_longer_than_80_chars
           '--use-application-binary=${PlatformUtils.prebuiltApplicationBinaryPath}',
           '--device-id=${PlatformUtils.getDeviceIdForPlatform()}',
+          '--vmservice-out-file=$_vmServiceInfoPath',
         ];
         logger.info('Running "flutter $args"');
         return await Process.start('flutter', args);
@@ -226,10 +232,14 @@ class WidgetPreviewEnvironment {
     );
 
     final daemon = Daemon(
-      // Immediately trigger a hot restart on app start to update state
-      onAppStart: (String appId) => process.stdin.writeln(
-        DaemonRequest.hotRestart(appId: appId).encode(),
-      ),
+      onAppStart: (String appId) async {
+        final serviceInfo = await File(_vmServiceInfoPath).readAsString();
+        logger.info('Preview VM service can be found at: $serviceInfo');
+        // Immediately trigger a hot restart on app start to update state
+        process.stdin.writeln(
+          DaemonRequest.hotRestart(appId: appId).encode(),
+        );
+      },
     );
 
     process.stdout.transform(utf8.decoder).listen((e) {
