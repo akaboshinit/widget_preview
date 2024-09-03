@@ -15,18 +15,16 @@ import 'package:dart_style/dart_style.dart';
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as path;
 import 'package:watcher/watcher.dart';
-import 'package:yaml/yaml.dart';
-import '../environment/widget_preview_scaffold.dart';
 
+import 'constants.dart';
 import 'flutter_tools_daemon.dart';
+import 'pubspec_processor.dart';
 import 'utils.dart';
 
 /// Clears preview scaffolding state on each run.
 ///
 /// Set to false for release.
 const developmentMode = false;
-
-const previewScaffoldProjectPath = '.dart_tool/preview_scaffold/';
 
 final logger = Logger.root;
 
@@ -35,9 +33,11 @@ typedef PreviewMapping = Map<String, List<String>>;
 class WidgetPreviewEnvironment {
   late final String _vmServiceInfoPath;
   final _pathToPreviews = PreviewMapping();
+  PubspecProcessor? _pubspecProcessor;
   StreamSubscription<WatchEvent>? _fileWatcher;
 
   Future<void> start(Directory projectRoot) async {
+    _pubspecProcessor = PubspecProcessor(projectRoot: projectRoot);
     // TODO(bkonyi): consider parallelizing initializing the scaffolding
     // project and finding the previews.
     await _ensurePreviewScaffoldExists(projectRoot);
@@ -49,17 +49,7 @@ class WidgetPreviewEnvironment {
 
   Future<void> _cleanup() async {
     await _fileWatcher?.cancel();
-  }
-
-  Future<String> _getProjectNameFromPubspec(Directory projectRoot) async {
-    final pubspec = File(path.join(projectRoot.path, 'pubspec.yaml'));
-    if (!await pubspec.exists()) {
-      // TODO(bkonyi): throw a better error.
-      throw StateError('Could not find pubspec.yaml');
-    }
-    final pubspecContents = await pubspec.readAsString();
-    final yaml = loadYamlDocument(pubspecContents).contents.value as YamlMap;
-    return yaml['name'] as String;
+    _pubspecProcessor = null;
   }
 
   Future<void> _ensurePreviewScaffoldExists(Directory projectRoot) async {
@@ -90,40 +80,18 @@ class WidgetPreviewEnvironment {
 
     logger.info(Uri(path: previewScaffoldProjectPath).resolve('lib/main.dart'));
     logger.info('Writing preview scaffolding entry point...');
-    await File(
-      Uri(path: previewScaffoldProjectPath).resolve('lib/main.dart').toString(),
-    ).writeAsString(
-      widgetPreviewScaffold,
-      mode: FileMode.write,
-    );
 
-    // TODO(bkonyi): add dependency on published package:widget_preview or
-    // remove this if it's shipped with package:flutter
-    final projectName = await _getProjectNameFromPubspec(projectRoot);
-    logger.info('Adding package:widget_preview and $projectName dependency...');
-    final widgetPreviewPath = path.dirname(
-      path.dirname(
-        Platform.script.toFilePath(),
+    // widget_preview_scaffold.dart contains the contents of main.dart for the
+    // generated preview environment.
+    await File.fromUri(
+      Platform.script.resolve(
+        '../lib/src/environment/widget_preview_scaffold.dart',
       ),
+    ).copy(
+      Uri(path: previewScaffoldProjectPath).resolve('lib/main.dart').toString(),
     );
-    final args = [
-      'pub',
-      'add',
-      '--directory=.dart_tool/preview_scaffold',
-      // TODO(bkonyi): don't hardcode
-      'widget_preview:{"path":"$widgetPreviewPath"}',
-      '$projectName:{"path":"."}',
-    ];
-    // TODO(bkonyi): check exit code.
-    final result = await Process.run('flutter', args);
-    if (result.exitCode != 0) {
-      logger.severe('Failed to add dependencies to pubspec.yaml');
-      logger.severe('STDOUT: ${result.stdout}');
-      logger.severe('STDERR: ${result.stderr}');
 
-      // TODO(bkonyi): throw a better error.
-      throw StateError('Failed to add dependencies to pubspec.yaml');
-    }
+    await _pubspecProcessor!.initialize();
 
     // Generate an empty 'lib/generated_preview.dart'
     logger.info(
@@ -136,10 +104,8 @@ class WidgetPreviewEnvironment {
     await _initialBuild();
 
     logger.info('Preview scaffold initialization complete!');
-
-    // TODO(bkonyi): create a symlink to the assets directory and update the
-    // pubspec with the asset entries.
   }
+
 
   Future<void> _initialBuild() async {
     await runInDirectoryScope(
