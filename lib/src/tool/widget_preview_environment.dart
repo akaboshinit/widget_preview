@@ -287,7 +287,7 @@ class WidgetPreviewEnvironment {
       logger.info('[STDERR] ${e.withNoTrailingNewLine}');
     });
 
-    _fileWatcher = Watcher(projectDir).events.listen((event) {
+    _fileWatcher = Watcher(projectDir).events.listen((event) async {
       if (daemon.appId == null ||
           !event.path.endsWith('.dart') ||
           event.path.endsWith('generated_preview.dart')) return;
@@ -310,7 +310,7 @@ class WidgetPreviewEnvironment {
       } else {
         _pathToPreviews.remove(uri);
       }
-      _populatePreviewsInScaffold(_pathToPreviews);
+      await _populatePreviewsInScaffold(_pathToPreviews);
 
       process.stdin.writeln(
         DaemonRequest.hotReload(appId: daemon.appId!).encode(),
