@@ -24,7 +24,7 @@ import 'utils.dart';
 /// Clears preview scaffolding state on each run.
 ///
 /// Set to false for release.
-const developmentMode = true;
+const developmentMode = false;
 
 const previewScaffoldProjectPath = '.dart_tool/preview_scaffold/';
 
