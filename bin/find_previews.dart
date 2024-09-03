@@ -6,7 +6,7 @@ import 'dart:developer';
 import 'dart:io';
 
 import 'package:logging/logging.dart';
-import 'package:widget_preview/src/widget_preview_environment.dart';
+import 'package:widget_preview/src/tool/widget_preview_environment.dart';
 
 final logger = Logger.root
   ..onRecord.listen((record) {

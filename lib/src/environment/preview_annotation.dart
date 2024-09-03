@@ -2,5 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-export 'src/environment/preview_annotation.dart' show Preview;
-export 'src/environment/widget_preview.dart' show WidgetPreview;
+/// Annotation used to mark functions that return widget previews.
+class Preview {
+  const Preview();
+}

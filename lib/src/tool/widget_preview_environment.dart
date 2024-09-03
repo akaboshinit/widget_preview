@@ -13,16 +13,18 @@ import 'package:analyzer/file_system/physical_file_system.dart';
 import 'package:code_builder/code_builder.dart' as builder;
 import 'package:dart_style/dart_style.dart';
 import 'package:logging/logging.dart';
+import 'package:path/path.dart' as path;
 import 'package:watcher/watcher.dart';
+import 'package:yaml/yaml.dart';
+import '../environment/widget_preview_scaffold.dart';
 
 import 'flutter_tools_daemon.dart';
 import 'utils.dart';
-import 'widget_preview_scaffold.dart';
 
 /// Clears preview scaffolding state on each run.
 ///
 /// Set to false for release.
-const developmentMode = false;
+const developmentMode = true;
 
 const previewScaffoldProjectPath = '.dart_tool/preview_scaffold/';
 
@@ -38,7 +40,7 @@ class WidgetPreviewEnvironment {
   Future<void> start(Directory projectRoot) async {
     // TODO(bkonyi): consider parallelizing initializing the scaffolding
     // project and finding the previews.
-    await _ensurePreviewScaffoldExists();
+    await _ensurePreviewScaffoldExists(projectRoot);
     _pathToPreviews.addAll(_findPreviewFunctions(projectRoot));
     await _populatePreviewsInScaffold(_pathToPreviews);
     await _runPreviewEnvironment();
@@ -49,7 +51,18 @@ class WidgetPreviewEnvironment {
     await _fileWatcher?.cancel();
   }
 
-  Future<void> _ensurePreviewScaffoldExists() async {
+  Future<String> _getProjectNameFromPubspec(Directory projectRoot) async {
+    final pubspec = File(path.join(projectRoot.path, 'pubspec.yaml'));
+    if (!await pubspec.exists()) {
+      // TODO(bkonyi): throw a better error.
+      throw StateError('Could not find pubspec.yaml');
+    }
+    final pubspecContents = await pubspec.readAsString();
+    final yaml = loadYamlDocument(pubspecContents).contents.value as YamlMap;
+    return yaml['name'] as String;
+  }
+
+  Future<void> _ensurePreviewScaffoldExists(Directory projectRoot) async {
     // TODO(bkonyi): check for .dart_tool explicitly
     if (developmentMode) {
       final previewScaffoldProject = Directory(previewScaffoldProjectPath);
@@ -86,15 +99,31 @@ class WidgetPreviewEnvironment {
 
     // TODO(bkonyi): add dependency on published package:widget_preview or
     // remove this if it's shipped with package:flutter
-    logger.info('Adding package:widget_preview dependency...');
+    final projectName = await _getProjectNameFromPubspec(projectRoot);
+    logger.info('Adding package:widget_preview and $projectName dependency...');
+    final widgetPreviewPath = path.dirname(
+      path.dirname(
+        Platform.script.toFilePath(),
+      ),
+    );
     final args = [
       'pub',
       'add',
       '--directory=.dart_tool/preview_scaffold',
-      'widget_preview:{"path":"../widget_preview"}'
+      // TODO(bkonyi): don't hardcode
+      'widget_preview:{"path":"$widgetPreviewPath"}',
+      '$projectName:{"path":"."}',
     ];
     // TODO(bkonyi): check exit code.
-    await Process.run('flutter', args);
+    final result = await Process.run('flutter', args);
+    if (result.exitCode != 0) {
+      logger.severe('Failed to add dependencies to pubspec.yaml');
+      logger.severe('STDOUT: ${result.stdout}');
+      logger.severe('STDERR: ${result.stderr}');
+
+      // TODO(bkonyi): throw a better error.
+      throw StateError('Failed to add dependencies to pubspec.yaml');
+    }
 
     // Generate an empty 'lib/generated_preview.dart'
     logger.info(
@@ -107,6 +136,9 @@ class WidgetPreviewEnvironment {
     await _initialBuild();
 
     logger.info('Preview scaffold initialization complete!');
+
+    // TODO(bkonyi): create a symlink to the assets directory and update the
+    // pubspec with the asset entries.
   }
 
   Future<void> _initialBuild() async {
@@ -144,29 +176,34 @@ class WidgetPreviewEnvironment {
           continue;
         }
 
-        final lib = context.currentSession.getParsedLibrary(filePath)
-            as ParsedLibraryResult;
-        for (final unit in lib.units) {
-          for (final entity in unit.unit.childEntities) {
-            if (entity is FunctionDeclaration &&
-                !entity.name.toString().startsWith('_')) {
-              var foundPreview = false;
-              for (final annotation in entity.metadata) {
-                if (annotation.name.name == 'Preview') {
-                  // What happens if the annotation is applied multiple times?
-                  foundPreview = true;
-                  break;
+        final lib = context.currentSession.getParsedLibrary(filePath);
+        if (lib is ParsedLibraryResult) {
+          for (final unit in lib.units) {
+            final previewEntries =
+                previews.putIfAbsent(unit.uri.toString(), () => <String>[]);
+            for (final entity in unit.unit.childEntities) {
+              if (entity is FunctionDeclaration &&
+                  !entity.name.toString().startsWith('_')) {
+                var foundPreview = false;
+                for (final annotation in entity.metadata) {
+                  if (annotation.name.name == 'Preview') {
+                    // What happens if the annotation is applied multiple times?
+                    foundPreview = true;
+                    break;
+                  }
                 }
-              }
-              if (foundPreview) {
-                logger.info('File path: ${filePath.asFilePath}');
-                logger.info('Preview function: ${entity.name}');
-                previews
-                    .putIfAbsent(filePath.asFilePath, () => <String>[])
-                    .add(entity.name.toString());
+                if (foundPreview) {
+                  logger.info('Found preview at:');
+                  logger.info('File path: ${unit.uri}');
+                  logger.info('Preview function: ${entity.name}');
+                  logger.info('');
+                  previewEntries.add(entity.name.toString());
+                }
               }
             }
           }
+        } else {
+          logger.warning('Unknown library type at $filePath: $lib');
         }
       }
     }
@@ -212,9 +249,7 @@ class WidgetPreviewEnvironment {
   Future<void> _runPreviewEnvironment() async {
     final projectDir = Directory.current.uri.toFilePath();
     final tempDir = await Directory.systemTemp.createTemp();
-    // TODO(bkonyi): use package:path
-    _vmServiceInfoPath = '${tempDir.path}${Platform.pathSeparator}'
-        'preview_vm_service.json';
+    _vmServiceInfoPath = path.join(tempDir.path, 'preview_vm_service.json');
     final process = await runInDirectoryScope<Process>(
       path: previewScaffoldProjectPath,
       callback: () async {
@@ -256,18 +291,24 @@ class WidgetPreviewEnvironment {
       if (daemon.appId == null ||
           !event.path.endsWith('.dart') ||
           event.path.endsWith('generated_preview.dart')) return;
-      final path = event.path.asFilePath;
-      logger.info('Detected change in $path. Performing reload...');
+      final eventPath = event.path.asFilePath;
+      logger.info('Detected change in $eventPath. Performing reload...');
 
-      final filePreviews = _findPreviewFunctions(File(event.path))[path];
-      logger.info('Updated previews for $path: $filePreviews');
-      if (filePreviews?.isNotEmpty ?? false) {
-        final currentPreviewsForFile = _pathToPreviews[path];
+      final filePreviewsMapping = _findPreviewFunctions(File(event.path));
+      if (filePreviewsMapping.length > 1) {
+        logger.warning('Previews from more than one file were detected!');
+        logger.warning('Previews: $filePreviewsMapping');
+      }
+      final MapEntry(key: uri, value: filePreviews) =
+          filePreviewsMapping.entries.first;
+      logger.info('Updated previews for $uri: $filePreviews');
+      if (filePreviews.isNotEmpty) {
+        final currentPreviewsForFile = _pathToPreviews[uri];
         if (filePreviews != currentPreviewsForFile) {
-          _pathToPreviews[path] = filePreviews!;
+          _pathToPreviews[uri] = filePreviews;
         }
       } else {
-        _pathToPreviews.remove(path);
+        _pathToPreviews.remove(uri);
       }
       _populatePreviewsInScaffold(_pathToPreviews);
 
