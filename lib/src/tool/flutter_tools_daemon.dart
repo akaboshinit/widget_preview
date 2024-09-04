@@ -2,28 +2,36 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
-class DaemonRequest {
-  DaemonRequest({required this.method, this.params});
+import 'package:logging/logging.dart';
 
-  factory DaemonRequest.hotRestart({required String appId}) =>
-      DaemonRequest._reloadOrRestart(
+import 'utils.dart';
+
+final logger = Logger.root;
+
+class FlutterToolsDaemonRequest {
+  FlutterToolsDaemonRequest({required this.method, this.params});
+
+  factory FlutterToolsDaemonRequest.hotRestart({required String appId}) =>
+      FlutterToolsDaemonRequest._reloadOrRestart(
         appId: appId,
         restart: true,
       );
 
-  factory DaemonRequest.hotReload({required String appId}) =>
-      DaemonRequest._reloadOrRestart(
+  factory FlutterToolsDaemonRequest.hotReload({required String appId}) =>
+      FlutterToolsDaemonRequest._reloadOrRestart(
         appId: appId,
         restart: false,
       );
 
-  factory DaemonRequest._reloadOrRestart({
+  factory FlutterToolsDaemonRequest._reloadOrRestart({
     required String appId,
     required bool restart,
   }) {
-    return DaemonRequest(
+    return FlutterToolsDaemonRequest(
       method: 'app.restart',
       params: {
         'appId': appId,
@@ -53,12 +61,58 @@ class DaemonRequest {
   static int _id = 0;
 }
 
-class Daemon {
-  Daemon({required this.onAppStart});
+/// Handler for daemon events from Flutter Tools.
+class FlutterToolsDaemon {
+  FlutterToolsDaemon({
+    required this.process,
+    required this.onAppStart,
+  }) {
+    stdoutSub = process.stdout.transform(utf8.decoder).listen((e) {
+      logger.info('[STDOUT] ${e.withNoTrailingNewLine}');
+      _handleEvent(e);
+    });
 
+    stderrSub = process.stderr.transform(utf8.decoder).listen((e) {
+      if (e == '\n') return;
+      logger.info('[STDERR] ${e.withNoTrailingNewLine}');
+    });
+  }
+
+  /// The Flutter Tools process.
+  final Process process;
+
+  /// Invoked when the 'app.started' event is sent by the daemon.
   void Function(String) onAppStart;
 
-  void handleEvent(String event) {
+  /// The application ID associated with the running application.
+  String? appId;
+
+  late final StreamSubscription<String> stdoutSub;
+  late final StreamSubscription<String> stderrSub;
+
+  Future<void> shutdown() async {
+    process.kill();
+    await Future.wait([
+      stdoutSub.cancel(),
+      stderrSub.cancel(),
+    ]);
+  }
+
+  /// Trigger a hot reload in the target process.
+  void hotReload() {
+    process.stdin.writeln(
+      FlutterToolsDaemonRequest.hotReload(appId: appId!).encode(),
+    );
+  }
+
+  /// Trigger a hot restart in the target process.
+  void hotRestart() {
+    process.stdin.writeln(
+      FlutterToolsDaemonRequest.hotRestart(appId: appId!).encode(),
+    );
+  }
+
+  void _handleEvent(String event) {
     List<Object?> root;
     try {
       root = json.decode(event) as List<Object?>;
@@ -77,6 +131,4 @@ class Daemon {
       onAppStart(id);
     }
   }
-
-  String? appId;
 }

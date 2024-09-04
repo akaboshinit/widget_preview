@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:analyzer/dart/analysis/analysis_context_collection.dart';
@@ -75,7 +74,7 @@ class WidgetPreviewEnvironment {
 
     if (!(await Directory(previewScaffoldProjectPath).exists())) {
       logger.severe('Could not create $previewScaffoldProjectPath!');
-      throw StateError('Could not create $previewScaffoldProjectPath');
+      throw StateError('Could not create $previewScaffoldProjectPath.');
     }
 
     logger.info(Uri(path: previewScaffoldProjectPath).resolve('lib/main.dart'));
@@ -232,26 +231,16 @@ class WidgetPreviewEnvironment {
       },
     );
 
-    final daemon = Daemon(
+    late final FlutterToolsDaemon daemon;
+    daemon = FlutterToolsDaemon(
+      process: process,
       onAppStart: (String appId) async {
         final serviceInfo = await File(_vmServiceInfoPath).readAsString();
         logger.info('Preview VM service can be found at: $serviceInfo');
         // Immediately trigger a hot restart on app start to update state
-        process.stdin.writeln(
-          DaemonRequest.hotRestart(appId: appId).encode(),
-        );
+        daemon.hotRestart();
       },
     );
-
-    process.stdout.transform(utf8.decoder).listen((e) {
-      logger.info('[STDOUT] ${e.withNoTrailingNewLine}');
-      daemon.handleEvent(e);
-    });
-
-    process.stderr.transform(utf8.decoder).listen((e) {
-      if (e == '\n') return;
-      logger.info('[STDERR] ${e.withNoTrailingNewLine}');
-    });
 
     _fileWatcher = Watcher(projectDir).events.listen((event) async {
       if (daemon.appId == null ||
@@ -276,11 +265,10 @@ class WidgetPreviewEnvironment {
       } else {
         _pathToPreviews.remove(uri);
       }
-      await _populatePreviewsInScaffold(_pathToPreviews);
 
-      process.stdin.writeln(
-        DaemonRequest.hotReload(appId: daemon.appId!).encode(),
-      );
+      // Regenerate generated_preview.dart and reload.
+      await _populatePreviewsInScaffold(_pathToPreviews);
+      daemon.hotReload();
     });
 
     await process.exitCode;

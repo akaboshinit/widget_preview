@@ -2,4 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+/// The location of the preview scaffold project relative to the parent
+/// project.
 const previewScaffoldProjectPath = '.dart_tool/preview_scaffold/';
