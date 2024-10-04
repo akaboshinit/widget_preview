@@ -10,6 +10,7 @@ import 'package:yaml/yaml.dart';
 import 'package:yaml_edit/yaml_edit.dart';
 
 import 'constants.dart';
+import 'utils.dart';
 
 final logger = Logger.root;
 
@@ -48,13 +49,17 @@ class PubspecProcessor {
     final yaml = loadYamlDocument(pubspecContents).contents.value as YamlMap;
     final projectName = yaml[_kName] as String;
     final flutterYaml = yaml[_kFlutter] as YamlMap;
-    final assets = (flutterYaml[_kAssets] as YamlList)
-        .value
-        .cast<String>()
-        // Reference the assets from the parent project.
-        .map((e) => '../../$e')
-        .toList();
-    final fontsYaml = (flutterYaml[_kFonts] as YamlList).value.cast<YamlMap>();
+    final assets = flutterYaml.containsKey(_kAssets)
+        ? (flutterYaml[_kAssets] as YamlList)
+            .value
+            .cast<String>()
+            // Reference the assets from the parent project.
+            .map((e) => '../../$e')
+            .toList()
+        : <Object?>[];
+    final fontsYaml = flutterYaml.containsKey(_kFonts)
+        ? (flutterYaml[_kFonts] as YamlList).value.cast<YamlMap>()
+        : <YamlMap>[];
     final fonts = <Map<String, Object>>[
       for (final familyYaml in fontsYaml)
         <String, Object>{
@@ -127,14 +132,10 @@ class PubspecProcessor {
       '$projectName:{"path":"${projectRoot.path}"}',
     ];
 
-    final result = await Process.run('flutter', args);
-    if (result.exitCode != 0) {
-      logger.severe('Failed to add dependencies to pubspec.yaml');
-      logger.severe('STDOUT: ${result.stdout}');
-      logger.severe('STDERR: ${result.stderr}');
-
-      // TODO(bkonyi): throw a better error.
-      throw StateError('Failed to add dependencies to pubspec.yaml');
-    }
+    checkExitCode(
+      description: 'Adding pub dependencies',
+      failureMessage: 'Failed to add dependencies to pubspec.yaml!',
+      result: await Process.run('flutter', args),
+    );
   }
 }

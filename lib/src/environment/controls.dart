@@ -134,6 +134,10 @@ class BrightnessButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // TODO(bkonyi): we should only need to require a theme override if there's
+    // no scaffolding in the preview that handles it on its own (e.g., a full 
+    // app preview should handle toggling brightness without requiring a theme
+    // override).
     final enabled = lightTheme != null && darkTheme != null;
     var actualBrightness = brightness;
     String tooltip;

@@ -25,6 +25,10 @@ import 'utils.dart';
 /// Set to false for release.
 const developmentMode = false;
 
+const shouldUsePrebuiltBinaryVar = 'NO_USE_PREBUILT_BINARY';
+const shouldUsePrebuiltBinary =
+    !bool.fromEnvironment(shouldUsePrebuiltBinaryVar);
+
 final logger = Logger.root;
 
 typedef PreviewMapping = Map<String, List<String>>;
@@ -64,13 +68,17 @@ class WidgetPreviewEnvironment {
       return;
     }
 
-    // TODO(bkonyi): check exit code.
     logger.info('Creating $previewScaffoldProjectPath...');
-    await Process.run('flutter', [
-      'create',
-      '--platforms=windows,linux,macos',
-      '.dart_tool/preview_scaffold',
-    ]);
+    checkExitCode(
+      description: 'Creating $previewScaffoldProjectPath',
+      failureMessage:
+          'Failed to create preview scaffold at $previewScaffoldProjectPath',
+      result: await Process.run('flutter', [
+        'create',
+        '--platforms=windows,linux,macos',
+        '.dart_tool/preview_scaffold',
+      ]),
+    );
 
     if (!(await Directory(previewScaffoldProjectPath).exists())) {
       logger.severe('Could not create $previewScaffoldProjectPath!');
@@ -99,12 +107,17 @@ class WidgetPreviewEnvironment {
 
     await _populatePreviewsInScaffold(const <String, List<String>>{});
 
-    logger.info('Performing initial build...');
-    await _initialBuild();
+    if (shouldUsePrebuiltBinary) {
+      logger.info('Performing initial build...');
+      await _initialBuild();
+    } else {
+      logger.warning(
+        'Skipping build of prebuilt binary as $shouldUsePrebuiltBinaryVar is defined',
+      );
+    }
 
     logger.info('Preview scaffold initialization complete!');
   }
-
 
   Future<void> _initialBuild() async {
     await runInDirectoryScope(
@@ -118,8 +131,11 @@ class WidgetPreviewEnvironment {
           '--device-id=${PlatformUtils.getDeviceIdForPlatform()}',
           '--debug',
         ];
-        // TODO(bkonyi): check exit code.
-        await Process.run('flutter', args);
+        checkExitCode(
+          description: 'Initial build',
+          failureMessage: 'Failed to generate prebuilt preview scaffold!',
+          result: await Process.run('flutter', args),
+        );
       },
     );
   }
@@ -221,8 +237,9 @@ class WidgetPreviewEnvironment {
         final args = [
           'run',
           '--machine',
-          // ignore: lines_longer_than_80_chars
-          '--use-application-binary=${PlatformUtils.prebuiltApplicationBinaryPath}',
+          if (shouldUsePrebuiltBinary)
+            // ignore: lines_longer_than_80_chars
+            '--use-application-binary=${PlatformUtils.prebuiltApplicationBinaryPath}',
           '--device-id=${PlatformUtils.getDeviceIdForPlatform()}',
           '--vmservice-out-file=$_vmServiceInfoPath',
         ];

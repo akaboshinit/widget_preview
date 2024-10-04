@@ -20,6 +20,20 @@ FutureOr<T> runInDirectoryScope<T>({
   return result;
 }
 
+ProcessResult checkExitCode({
+  required String description,
+  required String failureMessage,
+  required ProcessResult result,
+}) {
+  if (result.exitCode != 0) {
+    logger.severe('$description failed with exit code: ${result.exitCode}');
+    logger.severe('STDOUT:\n${result.stdout}');
+    logger.severe('\STDERR:\n${result.stderr}');
+    throw StateError(failureMessage);
+  }
+  return result;
+}
+
 abstract class PlatformUtils {
   static String get prebuiltApplicationBinaryPath {
     assert(Platform.isLinux || Platform.isMacOS || Platform.isWindows);
@@ -27,11 +41,10 @@ abstract class PlatformUtils {
     if (Platform.isMacOS) {
       path = 'build/macos/Build/Products/Debug/preview_scaffold.app';
     } else if (Platform.isLinux) {
-      // TODO(bkonyi): find path for debug binaries on Linux.
-      throw UnimplementedError();
+      path = 'build/linux/x64/debug/bundle/preview_scaffold';
     } else if (Platform.isWindows) {
-      // TODO(bkonyi): find path for debug binaries on Windows.
-      throw UnimplementedError();
+      // TODO(bkonyi): this doesn't always seem to work.
+      path = 'build/windows/x64/runner/Debug/preview_scaffold.exe';
     } else {
       throw StateError('Unknown OS');
     }
