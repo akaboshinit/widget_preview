@@ -28,7 +28,7 @@ ProcessResult checkExitCode({
   if (result.exitCode != 0) {
     logger.severe('$description failed with exit code: ${result.exitCode}');
     logger.severe('STDOUT:\n${result.stdout}');
-    logger.severe('\STDERR:\n${result.stderr}');
+    logger.severe('STDERR:\n${result.stderr}');
     throw StateError(failureMessage);
   }
   return result;

@@ -23,7 +23,7 @@ import 'utils.dart';
 /// Clears preview scaffolding state on each run.
 ///
 /// Set to false for release.
-const developmentMode = false;
+const developmentMode = true;
 
 const shouldUsePrebuiltBinaryVar = 'NO_USE_PREBUILT_BINARY';
 const shouldUsePrebuiltBinary =
@@ -242,6 +242,9 @@ class WidgetPreviewEnvironment {
             '--use-application-binary=${PlatformUtils.prebuiltApplicationBinaryPath}',
           '--device-id=${PlatformUtils.getDeviceIdForPlatform()}',
           '--vmservice-out-file=$_vmServiceInfoPath',
+          // Don't clobber the package_config.json which may have been manually
+          // modified to support package:flutter_gen for l10n.
+          '--no-pub',
         ];
         logger.info('Running "flutter $args"');
         return await Process.start('flutter', args);
@@ -262,7 +265,9 @@ class WidgetPreviewEnvironment {
     _fileWatcher = Watcher(projectDir).events.listen((event) async {
       if (daemon.appId == null ||
           !event.path.endsWith('.dart') ||
-          event.path.endsWith('generated_preview.dart')) return;
+          event.path.endsWith('generated_preview.dart')) {
+        return;
+      }
       final eventPath = event.path.asFilePath;
       logger.info('Detected change in $eventPath. Performing reload...');
 

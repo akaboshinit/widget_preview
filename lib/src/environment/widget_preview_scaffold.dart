@@ -13,12 +13,19 @@ import 'generated_preview.dart';
 /// Custom [AssetBundle] used to map original asset paths from the parent
 /// project to those in the preview project.
 class PreviewAssetBundle extends PlatformAssetBundle {
+  // Assets shipped via package dependencies have paths that start with
+  // 'packages'.
+  static const _kPackagesPrefix = 'packages';
+
   @override
   Future<ByteData> load(String key) {
-    // These assets are always present.
+    // These assets are always present or are shipped via a package and aren't
+    // actually located in the parent project, meaning their paths did not need
+    // to be modified.
     if (key == 'AssetManifest.bin' ||
         key == 'AssetManifest.json' ||
-        key == 'FontManifest.json') {
+        key == 'FontManifest.json' ||
+        key.startsWith(_kPackagesPrefix)) {
       return super.load(key);
     }
     // Other assets are from the parent project. Map their keys to those found
@@ -28,7 +35,9 @@ class PreviewAssetBundle extends PlatformAssetBundle {
 
   @override
   Future<ImmutableBuffer> loadBuffer(String key) async {
-    return await ImmutableBuffer.fromAsset('../../$key');
+    return await ImmutableBuffer.fromAsset(
+      key.startsWith(_kPackagesPrefix) ? key : '../../$key',
+    );
   }
 }
 

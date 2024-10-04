@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:logging/logging.dart';
@@ -34,8 +35,15 @@ class PubspecProcessor {
   static const _kFontFamily = 'family';
   static const _kFontWeight = 'weight';
   static const _kFontStyle = 'style';
+  static const _kGenerate = 'generate';
 
-  Future<String> _populateAssetsAndFonts() async {
+  final previewEnvironmentPubspec = File(
+    path.join(previewScaffoldProjectPath, _kPubspecYaml),
+  );
+
+  // Returns the project name and the boolean value of the 'generate' key.
+  // If 'generate' is true, package:flutter_gen should be depended on.
+  Future<(String, bool)> _processParentPubspec() async {
     final parentPubspec = File(path.join(projectRoot.path, _kPubspecYaml));
     if (!await parentPubspec.exists()) {
       // TODO(bkonyi): throw a better error.
@@ -49,17 +57,50 @@ class PubspecProcessor {
     final yaml = loadYamlDocument(pubspecContents).contents.value as YamlMap;
     final projectName = yaml[_kName] as String;
     final flutterYaml = yaml[_kFlutter] as YamlMap;
+
     final assets = flutterYaml.containsKey(_kAssets)
-        ? (flutterYaml[_kAssets] as YamlList)
-            .value
-            .cast<String>()
-            // Reference the assets from the parent project.
-            .map((e) => '../../$e')
-            .toList()
-        : <Object?>[];
+        ? (flutterYaml[_kAssets] as YamlList).value.cast<String>()
+        : <String>[];
     final fontsYaml = flutterYaml.containsKey(_kFonts)
         ? (flutterYaml[_kFonts] as YamlList).value.cast<YamlMap>()
         : <YamlMap>[];
+
+    // Write the asset and font information to the preview scaffold's pubspec.
+    // TODO(bkonyi): handle assets that are found under deferred-components.
+    final editor = YamlEditor(await previewEnvironmentPubspec.readAsString());
+    _updateAssets(assets: assets, pubspec: editor);
+    _updateFonts(fontsYaml: fontsYaml, pubspec: editor);
+
+    await previewEnvironmentPubspec.writeAsString(editor.toString());
+
+    return (
+      projectName,
+      flutterYaml.containsKey(_kGenerate)
+          ? flutterYaml[_kGenerate] as bool
+          : false
+    );
+  }
+
+  void _updateAssets({
+    required List<String> assets,
+    required YamlEditor pubspec,
+  }) {
+    // Reference the assets from the parent project.
+    if (assets.isNotEmpty) {
+      logger.info(
+        'Added assets from the parent project to $previewEnvironmentPubspec.',
+      );
+      pubspec.update(
+        [_kFlutter, _kAssets],
+        assets.map(_processAssetPath).toList(),
+      );
+    }
+  }
+
+  void _updateFonts({
+    required List<YamlMap> fontsYaml,
+    required YamlEditor pubspec,
+  }) {
     final fonts = <Map<String, Object>>[
       for (final familyYaml in fontsYaml)
         <String, Object>{
@@ -68,7 +109,8 @@ class PubspecProcessor {
             for (final fontsYaml in familyYaml[_kFonts] as YamlList)
               <String, Object>{
                 // Reference the assets from the parent project.
-                _kAsset: '../../${(fontsYaml as YamlMap)[_kAsset]}',
+                _kAsset: _processAssetPath(
+                    (fontsYaml as YamlMap)[_kAsset] as String),
                 if (fontsYaml.containsKey(_kFontWeight))
                   _kFontWeight: fontsYaml[_kFontWeight] as int,
                 if (fontsYaml.containsKey(_kFontStyle))
@@ -78,30 +120,57 @@ class PubspecProcessor {
         }
     ];
 
-    // Write the asset and font information to the preview scaffold's pubspec.
-    final previewEnvironmentPubspec = File(
-      path.join(previewScaffoldProjectPath, _kPubspecYaml),
-    );
-    final editor = YamlEditor(await previewEnvironmentPubspec.readAsString());
-
-    if (assets.isNotEmpty) {
-      logger.info(
-        'Added assets from the parent project to $previewEnvironmentPubspec.',
-      );
-      editor.update([_kFlutter, _kAssets], assets);
-    }
-
     if (fonts.isNotEmpty) {
       logger.info(
         'Added fonts from the parent project to $previewEnvironmentPubspec.',
       );
-      editor.update([_kFlutter, _kFonts], fonts);
+      pubspec.update([_kFlutter, _kFonts], fonts);
     }
+  }
 
-    await previewEnvironmentPubspec.writeAsString(editor.toString());
+  static String _processAssetPath(String asset) {
+    if (!asset.startsWith('packages')) {
+      return '../../$asset';
+    }
+    return asset;
+  }
 
-    // TODO(bkonyi): don't return this.
-    return projectName;
+  /// Manually adds an entry for package:flutter_gen to the preview scaffold's
+  /// package_config.json if the target project makes use of localization.
+  ///
+  /// The Flutter Tool does this when running a Flutter project with
+  /// localization instead of modifying the user's pubspec.yaml to depend on it
+  /// as a path dependency. Unfortunately, the preview scaffold still needs to
+  /// add it directly to its package_config.json as the generated package name
+  /// isn't actually flutter_gen, which pub doesn't really like, and using the
+  /// actual package name will break applications which import
+  /// package:flutter_gen.
+  Future<void> _addFlutterGenToPackageConfig() async {
+    final packageConfigPath = path.join(
+      projectRoot.path,
+      '.dart_tool',
+      'preview_scaffold',
+      '.dart_tool',
+      'package_config.json',
+    );
+    final packageConfig = File(packageConfigPath);
+    if (!packageConfig.existsSync()) {
+      throw StateError(
+        // ignore: lines_longer_than_80_chars
+        "Could not find preview project's package_config.json at $packageConfigPath",
+      );
+    }
+    final packageConfigJson =
+        json.decode(packageConfig.readAsStringSync()) as Map<String, Object?>;
+    (packageConfigJson['packages'] as List).cast<Map<String, String>>().add(
+      const <String, String>{
+        'name': 'flutter_gen',
+        'rootUri': '../../flutter_gen',
+        'languageVersion': '2.12',
+      },
+    );
+    packageConfig.writeAsStringSync(json.encode(packageConfigJson));
+    logger.info('Added flutter_gen dependency to $packageConfigPath');
   }
 
   /// Initializes the pubspec.yaml for the preview scaffolding project.
@@ -109,7 +178,7 @@ class PubspecProcessor {
   /// This adds dependencies on package:widget_preview and the parent project,
   /// while also populating the initial set of assets and fonts.
   Future<void> initialize() async {
-    final projectName = await _populateAssetsAndFonts();
+    final (projectName, generate) = await _processParentPubspec();
 
     logger.info(
       'Adding package:widget_preview and $projectName '
@@ -137,5 +206,9 @@ class PubspecProcessor {
       failureMessage: 'Failed to add dependencies to pubspec.yaml!',
       result: await Process.run('flutter', args),
     );
+
+    if (generate) {
+      await _addFlutterGenToPackageConfig();
+    }
   }
 }
