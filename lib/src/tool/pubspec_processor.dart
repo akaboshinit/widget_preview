@@ -24,6 +24,11 @@ class PubspecProcessor {
   /// The root of the parent project.
   final Directory projectRoot;
 
+  /// Set to true if package:flutter_gen is created by the parent project and
+  /// the preview scaffold needs to manually modify its package_config.json to
+  /// depend on it.
+  late final bool _shouldIncludeFlutterGen;
+
   static const _kPubspecYaml = 'pubspec.yaml';
 
   // Pubspec keys.
@@ -137,6 +142,15 @@ class PubspecProcessor {
 
   /// Manually adds an entry for package:flutter_gen to the preview scaffold's
   /// package_config.json if the target project makes use of localization.
+  Future<void> maybeAddFlutterGenToPackageConfig() async {
+    if (!_shouldIncludeFlutterGen) {
+      return;
+    }
+    await _addFlutterGenToPackageConfig();
+  }
+
+  /// Manually adds an entry for package:flutter_gen to the preview scaffold's
+  /// package_config.json if the target project makes use of localization.
   ///
   /// The Flutter Tool does this when running a Flutter project with
   /// localization instead of modifying the user's pubspec.yaml to depend on it
@@ -179,6 +193,7 @@ class PubspecProcessor {
   /// while also populating the initial set of assets and fonts.
   Future<void> initialize() async {
     final (projectName, generate) = await _processParentPubspec();
+    _shouldIncludeFlutterGen = generate;
 
     logger.info(
       'Adding package:widget_preview and $projectName '
@@ -207,7 +222,7 @@ class PubspecProcessor {
       result: await Process.run('flutter', args),
     );
 
-    if (generate) {
+    if (_shouldIncludeFlutterGen) {
       await _addFlutterGenToPackageConfig();
     }
   }

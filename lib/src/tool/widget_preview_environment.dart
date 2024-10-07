@@ -23,7 +23,7 @@ import 'utils.dart';
 /// Clears preview scaffolding state on each run.
 ///
 /// Set to false for release.
-const developmentMode = true;
+const developmentMode = false;
 
 const shouldUsePrebuiltBinaryVar = 'NO_USE_PREBUILT_BINARY';
 const shouldUsePrebuiltBinary =
@@ -136,6 +136,11 @@ class WidgetPreviewEnvironment {
           failureMessage: 'Failed to generate prebuilt preview scaffold!',
           result: await Process.run('flutter', args),
         );
+
+        // The initial build will overwrite the package_config.json and
+        // potentially remove the entry for package:flutter_gen if the
+        // parent project is using l10n.
+        await _pubspecProcessor!.maybeAddFlutterGenToPackageConfig();
       },
     );
   }
