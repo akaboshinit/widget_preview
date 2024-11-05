@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:analyzer/dart/analysis/analysis_context_collection.dart';
@@ -21,13 +22,22 @@ import 'pubspec_processor.dart';
 import 'utils.dart';
 
 /// Clears preview scaffolding state on each run.
-///
-/// Set to false for release.
-const developmentMode = false;
+const developmentModeVar = 'DEV_MODE';
+const developmentMode = bool.fromEnvironment(developmentModeVar);
 
+/// Perform a full build of the preview scaffold application each run rather
+/// than starting from the most recent build artifact.
 const shouldUsePrebuiltBinaryVar = 'NO_USE_PREBUILT_BINARY';
 const shouldUsePrebuiltBinary =
     !bool.fromEnvironment(shouldUsePrebuiltBinaryVar);
+
+/// Specifies if flutter_tester should be used.
+/// 
+/// This results in the preview viewer having a poor frame rate as the
+/// flutter_tester uses software rendering.
+const shouldUseDesktopEmbedderVar = 'USE_FLUTTER_TESTER';
+const shouldUseDesktopEmbedder =
+    !bool.fromEnvironment(shouldUseDesktopEmbedderVar);
 
 final logger = Logger.root;
 
@@ -107,7 +117,7 @@ class WidgetPreviewEnvironment {
 
     await _populatePreviewsInScaffold(const <String, List<String>>{});
 
-    if (shouldUsePrebuiltBinary) {
+    if (shouldUsePrebuiltBinary && shouldUseDesktopEmbedder) {
       logger.info('Performing initial build...');
       await _initialBuild();
     } else {
@@ -120,6 +130,7 @@ class WidgetPreviewEnvironment {
   }
 
   Future<void> _initialBuild() async {
+    assert(shouldUsePrebuiltBinary && shouldUseDesktopEmbedder);
     await runInDirectoryScope(
       path: previewScaffoldProjectPath,
       callback: () async {
@@ -242,10 +253,13 @@ class WidgetPreviewEnvironment {
         final args = [
           'run',
           '--machine',
-          if (shouldUsePrebuiltBinary)
-            // ignore: lines_longer_than_80_chars
-            '--use-application-binary=${PlatformUtils.prebuiltApplicationBinaryPath}',
-          '--device-id=${PlatformUtils.getDeviceIdForPlatform()}',
+          if (shouldUseDesktopEmbedder) ...[
+            if (shouldUsePrebuiltBinary)
+              // ignore: lines_longer_than_80_chars
+              '--use-application-binary=${PlatformUtils.prebuiltApplicationBinaryPath}',
+            '--device-id=${PlatformUtils.getDeviceIdForPlatform()}',
+          ] else
+            '--device-id=flutter-tester',
           '--vmservice-out-file=$_vmServiceInfoPath',
           // Don't clobber the package_config.json which may have been manually
           // modified to support package:flutter_gen for l10n.
@@ -260,7 +274,9 @@ class WidgetPreviewEnvironment {
     daemon = FlutterToolsDaemon(
       process: process,
       onAppStart: (String appId) async {
-        final serviceInfo = await File(_vmServiceInfoPath).readAsString();
+        final serviceInfo = Uri.parse(
+          await File(_vmServiceInfoPath).readAsString(),
+        ).replace(scheme: 'http');
         logger.info('Preview VM service can be found at: $serviceInfo');
         // Immediately trigger a hot restart on app start to update state
         daemon.hotRestart();
@@ -298,6 +314,18 @@ class WidgetPreviewEnvironment {
       daemon.hotReload();
     });
 
+    // The ordering of setting echo and line modes matters on Windows.
+    stdin.echoMode = false;
+    stdin.lineMode = false;
+
+    // Support hot restart for quicker development cycles.
+    final stdinSub = stdin.transform(utf8.decoder).listen((e) {
+      if (e == 'R') {
+        daemon.hotRestart();
+      }
+    });
+
     await process.exitCode;
+    await stdinSub.cancel();
   }
 }

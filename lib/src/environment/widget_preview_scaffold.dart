@@ -2,8 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+// ignore: prefer_relative_imports, this won't be a relative import in the preview environment.
+import 'package:widget_preview/src/environment/frame_streamer.dart';
 // ignore: prefer_relative_imports, this won't be a relative import in the preview environment.
 import 'package:widget_preview/src/environment/widget_preview.dart';
 
@@ -41,12 +46,33 @@ class PreviewAssetBundle extends PlatformAssetBundle {
   }
 }
 
-void main() {
-  runApp(const WidgetPreviewScaffold());
+Future<void> main() async {
+  final completer = Completer<void>();
+  WidgetsFlutterBinding.ensureInitialized().addPostFrameCallback(
+    (_) => completer.complete(),
+  );
+  final windowSizeNotifier = ValueNotifier<Size>(Size.zero);
+  runApp(
+    WidgetPreviewScaffold(
+      windowSizeListenable: windowSizeNotifier,
+    ),
+  );
+
+  // Wait for the binding to be initialized so we can initialize
+  // LiveWidgetController in InteractionDelegate.
+  await completer.future;
+  // TODO(bkonyi): find way to prevent this server from being restarted after hot restart.
+  unawaited(PreviewServer().initialize(
+    host: 'localhost',
+    port: 7689,
+    windowSizeNotifier: windowSizeNotifier,
+  ));
 }
 
 class WidgetPreviewScaffold extends StatelessWidget {
-  const WidgetPreviewScaffold({super.key});
+  const WidgetPreviewScaffold({super.key, required this.windowSizeListenable});
+
+  final ValueListenable<Size> windowSizeListenable;
 
   @override
   Widget build(BuildContext context) {
@@ -92,7 +118,20 @@ class WidgetPreviewScaffold extends StatelessWidget {
         color: Colors.transparent,
         child: DefaultAssetBundle(
           bundle: PreviewAssetBundle(),
-          child: previewView,
+          // Try to mimic the size of the render surface from the viewer.
+          // TODO(bkonyi): this doesn't work very well and streamed position
+          // offsets don't match correctly.
+          child: ValueListenableBuilder<Size>(
+            valueListenable: windowSizeListenable,
+            builder: (context, size, _) {
+              return Center(
+                child: SizedBox.fromSize(
+                  size: size,
+                  child: previewView,
+                ),
+              );
+            },
+          ),
         ),
       ),
     );
