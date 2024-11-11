@@ -30,4 +30,5 @@ abstract class InteractionDelegateConstants {
   static const kKeyId = 'keyId';
   static const kPhysicalKeyId = 'usbHidUsage';
   static const kButtons = 'buttons';
+  static const kCharacter = 'character';
 }

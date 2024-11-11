@@ -17,6 +17,9 @@ import 'widget_preview.dart';
 /// Replays user interactions sent from the preview viewer in the actual
 /// preview environment.
 class InteractionDelegate {
+  InteractionDelegate() {
+    textInputHandler.register();
+  }
 
   /// A controller used to interact with the running preview application.
   ///
@@ -31,7 +34,7 @@ class InteractionDelegate {
   final textInputHandler = PreviewTextInput();
 
   /// The currently active gesture.
-  /// 
+  ///
   /// This is non-null only while a gesture is active.
   TestGesture? activeGesture;
 
@@ -199,22 +202,24 @@ class InteractionDelegate {
       ..registerMethod(
         // Invoked when a keyboard key is first pressed down.
         InteractionDelegateConstants.kOnKeyDownEvent,
-        (Parameters params) async {
-          final (logicalKey, physicalKey) = _getKeysFromParams(params);
+        (Parameters params) {
+          final (logicalKey, physicalKey, char) = _getKeysFromParams(params);
           HardwareKeyboard.instance.handleKeyEvent(
             KeyDownEvent(
               logicalKey: logicalKey,
               physicalKey: physicalKey,
+              character: char,
               timeStamp: Duration.zero,
             ),
           );
+          _handleTextInput(logicalKey: logicalKey, character: char);
         },
       )
       ..registerMethod(
         // Invoked when a keyboard key is released.
         InteractionDelegateConstants.kOnKeyUpEvent,
-        (Parameters params) async {
-          final (logicalKey, physicalKey) = _getKeysFromParams(params);
+        (Parameters params) {
+          final (logicalKey, physicalKey, _) = _getKeysFromParams(params);
           HardwareKeyboard.instance.handleKeyEvent(
             KeyUpEvent(
               logicalKey: logicalKey,
@@ -227,21 +232,22 @@ class InteractionDelegate {
       ..registerMethod(
         // Invoked when a keyboard key is held down.
         InteractionDelegateConstants.kOnKeyRepeatEvent,
-        (Parameters params) async {
-          final (logicalKey, physicalKey) = _getKeysFromParams(params);
+        (Parameters params) {
+          final (logicalKey, physicalKey, char) = _getKeysFromParams(params);
           HardwareKeyboard.instance.handleKeyEvent(
             KeyRepeatEvent(
               logicalKey: logicalKey,
               physicalKey: physicalKey,
+              character: char,
               timeStamp: Duration.zero,
             ),
           );
-          textInputHandler.enterText(logicalKey.keyLabel);
+          _handleTextInput(logicalKey: logicalKey, character: char);
         },
       );
   }
 
-  static (LogicalKeyboardKey, PhysicalKeyboardKey) _getKeysFromParams(
+  static (LogicalKeyboardKey, PhysicalKeyboardKey, String?) _getKeysFromParams(
     Parameters params,
   ) {
     final args = params.asMap;
@@ -251,7 +257,32 @@ class InteractionDelegate {
     final physicalKey = PhysicalKeyboardKey.findKeyByCode(
       args[InteractionDelegateConstants.kPhysicalKeyId] as int,
     )!;
+    final character = args[InteractionDelegateConstants.kCharacter] as String?;
+    return (key, physicalKey, character);
+  }
 
-    return (key, physicalKey);
+  void _handleTextInput({
+    required LogicalKeyboardKey logicalKey,
+    required String? character,
+  }) {
+    switch (logicalKey) {
+      case LogicalKeyboardKey.backspace:
+      case LogicalKeyboardKey.delete:
+        textInputHandler.backspace();
+      case LogicalKeyboardKey.arrowLeft:
+        textInputHandler.arrowLeft();
+      case LogicalKeyboardKey.arrowRight:
+        textInputHandler.arrowRight();
+      case LogicalKeyboardKey.home:
+        textInputHandler.home();
+      case LogicalKeyboardKey.end:
+        textInputHandler.end();
+      case LogicalKeyboardKey.enter:
+        textInputHandler.enter();
+      default:
+        if (character != null) {
+          textInputHandler.pushCharacter(character);
+        }
+    }
   }
 }

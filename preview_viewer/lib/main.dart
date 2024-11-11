@@ -285,6 +285,7 @@ class PreviewServer {
         InteractionDelegateConstants.kKeyId: event.logicalKey.keyId,
         InteractionDelegateConstants.kPhysicalKeyId:
             event.physicalKey.usbHidUsage,
+        InteractionDelegateConstants.kCharacter: event.character,
       },
     );
   }
