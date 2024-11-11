@@ -7,7 +7,7 @@ import 'interaction_delegate.dart';
 /// Constants for RPC methods and parameters handled by [InteractionDelegate].
 abstract class InteractionDelegateConstants {
   static const kOnTapDown = 'onTapDown';
-  static const kOnDoubleTapDown = 'onDoubleTapDown';
+  static const kOnTapUp = 'onTapUp';
   static const kOnScroll = 'onScroll';
   static const kOnPanZoomStart = 'onPanZoomStart';
   static const kOnPanZoomUpdate = 'onPanZoomUpdate';
@@ -17,9 +17,6 @@ abstract class InteractionDelegateConstants {
   static const kOnKeyRepeatEvent = 'onKeyRepeatEvent';
   static const kOnPointerMove = 'onPointerMove';
   static const kOnPointerHover = 'onPointerHover';
-  static const kOnPanStart = 'onPanStart';
-  static const kOnPanUpdate = 'onPanUpdate';
-  static const kOnPanEnd = 'onPanEnd';
 
   static const kPositionX = 'positionX';
   static const kPositionY = 'positionY';

@@ -11,13 +11,16 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:json_rpc_2/json_rpc_2.dart';
 
 import 'constants.dart';
+import 'json_rpc_request_queue.dart';
 import 'text_input_handler.dart';
 import 'widget_preview.dart';
 
 /// Replays user interactions sent from the preview viewer in the actual
 /// preview environment.
 class InteractionDelegate {
-  InteractionDelegate() {
+  InteractionDelegate({required Peer connection})
+      : _interactionQueue = JsonRpcRequestQueue(connection: connection) {
+    registerInteractionHandlers();
     textInputHandler.register();
   }
 
@@ -33,17 +36,14 @@ class InteractionDelegate {
   /// Handles replaying text input to text fields.
   final textInputHandler = PreviewTextInput();
 
-  /// The currently active gesture.
-  ///
-  /// This is non-null only while a gesture is active.
-  TestGesture? activeGesture;
+  final JsonRpcRequestQueue _interactionQueue;
 
-  void registerInteractionHandlers({required Peer connection}) {
-    connection
+  void registerInteractionHandlers() {
+    _interactionQueue
       ..registerMethod(
         InteractionDelegateConstants.kOnTapDown,
-        // Handles single taps / clicks.
-        (Parameters params) {
+        // Handles the press of the primary button.
+        (Parameters params) async {
           final args = params.asMap;
           final offset = Offset(
             args[InteractionDelegateConstants.kLocalPositionX] as double,
@@ -52,29 +52,23 @@ class InteractionDelegate {
           final scaffoldOffset = controller.getTopLeft(
             find.byType(WidgetPreviewerWindowConstraints),
           );
-          controller.tapAt(offset + scaffoldOffset);
+          await controller.sendEventToBinding(
+            pointerHandler.down(offset + scaffoldOffset),
+          );
         },
       )
       ..registerMethod(
-        // Handles double taps / clicks.
-        InteractionDelegateConstants.kOnDoubleTapDown,
-        (Parameters params) {
-          final args = params.asMap;
-          final offset = Offset(
-            args[InteractionDelegateConstants.kLocalPositionX] as double,
-            args[InteractionDelegateConstants.kLocalPositionY] as double,
-          );
-          final scaffoldOffset = controller.getTopLeft(
-            find.byType(WidgetPreviewerWindowConstraints),
-          );
-          controller.tapAt(offset + scaffoldOffset);
+        InteractionDelegateConstants.kOnTapUp,
+        // Handles the release of the primary button.
+        (Parameters params) async {
+          await controller.sendEventToBinding(pointerHandler.up());
         },
       )
       ..registerMethod(
         // Handles scrolling initiated using a mouse scroll wheel. This does
         // not handle touchpad scrolling.
         InteractionDelegateConstants.kOnScroll,
-        (Parameters params) {
+        (Parameters params) async {
           final args = params.asMap;
           final position = Offset(
             args[InteractionDelegateConstants.kPositionX] as double,
@@ -85,49 +79,53 @@ class InteractionDelegate {
             args[InteractionDelegateConstants.kDeltaY] as double,
           );
           pointerHandler.hover(position);
-          controller.sendEventToBinding(pointerHandler.scroll(scrollDelta));
+          await controller.sendEventToBinding(
+            pointerHandler.scroll(scrollDelta),
+          );
         },
       )
       ..registerMethod(
         // Handles pointer hover events (e.g., when the cursor hovers over a
         // position for some period of time).
         InteractionDelegateConstants.kOnPointerHover,
-        (Parameters params) {
+        (Parameters params) async {
           final args = params.asMap;
           final position = Offset(
             args[InteractionDelegateConstants.kPositionX] as double,
             args[InteractionDelegateConstants.kPositionY] as double,
           );
-          controller.sendEventToBinding(pointerHandler.hover(position));
+          await controller.sendEventToBinding(pointerHandler.hover(position));
         },
       )
       ..registerMethod(
         // Updates the current pointer location.
         InteractionDelegateConstants.kOnPointerMove,
-        (Parameters params) {
+        (Parameters params) async {
           final args = params.asMap;
           final position = Offset(
             args[InteractionDelegateConstants.kPositionX] as double,
             args[InteractionDelegateConstants.kPositionY] as double,
           );
           final buttons = args[InteractionDelegateConstants.kButtons] as int;
-          controller.sendEventToBinding(pointerHandler.move(
-            position,
-            buttons: buttons,
-          ));
+          await controller.sendEventToBinding(
+            pointerHandler.move(
+              position,
+              buttons: buttons,
+            ),
+          );
         },
       )
       ..registerMethod(
         // Indicates a pan/zoom has started. This is invoked during touchpad
         // scrolling.
         InteractionDelegateConstants.kOnPanZoomStart,
-        (Parameters params) {
+        (Parameters params) async {
           final args = params.asMap;
           final position = Offset(
             args[InteractionDelegateConstants.kPositionX] as double,
             args[InteractionDelegateConstants.kPositionY] as double,
           );
-          controller.sendEventToBinding(
+          await controller.sendEventToBinding(
             pointerHandler.panZoomStart(position),
           );
         },
@@ -136,7 +134,7 @@ class InteractionDelegate {
         // Indicates a pan/zoom is in progress and providing position deltas.
         // This is invoked during touchpad scrolling.
         InteractionDelegateConstants.kOnPanZoomUpdate,
-        (Parameters params) {
+        (Parameters params) async {
           final args = params.asMap;
           final position = Offset(
             args[InteractionDelegateConstants.kPositionX] as double,
@@ -146,7 +144,7 @@ class InteractionDelegate {
             args[InteractionDelegateConstants.kDeltaX] as double,
             args[InteractionDelegateConstants.kDeltaY] as double,
           );
-          controller.sendEventToBinding(
+          await controller.sendEventToBinding(
             pointerHandler.panZoomUpdate(
               position,
               pan: panDelta,
@@ -158,51 +156,14 @@ class InteractionDelegate {
         // Indicates a pan/zoom has finished. This is invoked during touchpad
         // scrolling.
         InteractionDelegateConstants.kOnPanZoomEnd,
-        () {
-          controller.sendEventToBinding(pointerHandler.panZoomEnd());
-        },
-      )
-      ..registerMethod(
-        // Indicates a pan has started. This is invoked during drag gestures.
-        InteractionDelegateConstants.kOnPanStart,
-        (Parameters params) async {
-          final args = params.asMap;
-          final position = Offset(
-            args[InteractionDelegateConstants.kPositionX] as double,
-            args[InteractionDelegateConstants.kPositionY] as double,
-          );
-          assert(activeGesture == null);
-          activeGesture = await controller.startGesture(
-            position,
-            kind: PointerDeviceKind.mouse,
-          );
-        },
-      )
-      ..registerMethod(
-        // Indicates a pan is in progress and providing position deltas.
-        // This is invoked during drag gestures.
-        InteractionDelegateConstants.kOnPanUpdate,
-        (Parameters params) async {
-          final args = params.asMap;
-          final panDelta = Offset(
-            args[InteractionDelegateConstants.kDeltaX] as double,
-            args[InteractionDelegateConstants.kDeltaY] as double,
-          );
-          await activeGesture!.moveBy(panDelta);
-        },
-      )
-      ..registerMethod(
-        // Indicates a pan is completed. This is invoked during drag gestures.
-        InteractionDelegateConstants.kOnPanEnd,
-        (Parameters params) async {
-          await activeGesture!.up();
-          activeGesture = null;
+        (Parameters _) async {
+          await controller.sendEventToBinding(pointerHandler.panZoomEnd());
         },
       )
       ..registerMethod(
         // Invoked when a keyboard key is first pressed down.
         InteractionDelegateConstants.kOnKeyDownEvent,
-        (Parameters params) {
+        (Parameters params) async {
           final (logicalKey, physicalKey, char) = _getKeysFromParams(params);
           HardwareKeyboard.instance.handleKeyEvent(
             KeyDownEvent(
@@ -218,7 +179,7 @@ class InteractionDelegate {
       ..registerMethod(
         // Invoked when a keyboard key is released.
         InteractionDelegateConstants.kOnKeyUpEvent,
-        (Parameters params) {
+        (Parameters params) async {
           final (logicalKey, physicalKey, _) = _getKeysFromParams(params);
           HardwareKeyboard.instance.handleKeyEvent(
             KeyUpEvent(
@@ -232,7 +193,7 @@ class InteractionDelegate {
       ..registerMethod(
         // Invoked when a keyboard key is held down.
         InteractionDelegateConstants.kOnKeyRepeatEvent,
-        (Parameters params) {
+        (Parameters params) async {
           final (logicalKey, physicalKey, char) = _getKeysFromParams(params);
           HardwareKeyboard.instance.handleKeyEvent(
             KeyRepeatEvent(

@@ -128,36 +128,20 @@ class PreviewServer {
 
   /// Notifies the remote preview application that the preview viewer's window
   /// size has changed.
-  void sendWindowSize() {
+  void sendWindowSize() async {
     // TODO(bkonyi): revisit this logic to make sure we're handling pixel ratios right.
     final view = WidgetsBinding.instance.platformDispatcher.views.first;
     final size = view.physicalSize;
     final pixelRatio = view.devicePixelRatio;
-    connection.sendNotification('setWindowSize', {
+    await connection.sendRequest('setWindowSize', {
       'x': size.width / pixelRatio,
       'y': size.height / pixelRatio,
     });
   }
 
-  /// Forwards tap / click events to the preview application.
-  void onTapDown(TapDownDetails details) {
-    connection.sendNotification(InteractionDelegateConstants.kOnTapDown, {
-      InteractionDelegateConstants.kLocalPositionX: details.localPosition.dx,
-      InteractionDelegateConstants.kLocalPositionY: details.localPosition.dy,
-    });
-  }
-
-  /// Forwards double tap / click events to the preview application.
-  void onDoubleTapDown(TapDownDetails details) {
-    connection.sendNotification(InteractionDelegateConstants.kOnDoubleTapDown, {
-      InteractionDelegateConstants.kLocalPositionX: details.localPosition.dx,
-      InteractionDelegateConstants.kLocalPositionY: details.localPosition.dy,
-    });
-  }
-
   /// Forwards hover events to the preview application.
-  void onPointerHover(PointerHoverEvent details) {
-    connection.sendNotification(
+  void onPointerHover(PointerHoverEvent details) async {
+    await connection.sendRequest(
       InteractionDelegateConstants.kOnPointerHover,
       {
         InteractionDelegateConstants.kPositionX: details.position.dx,
@@ -166,10 +150,26 @@ class PreviewServer {
     );
   }
 
+  /// Forwards event for the press of the primary button to the preview
+  /// application.
+  void onPointerDown(PointerDownEvent details) async {
+    await connection.sendRequest(InteractionDelegateConstants.kOnTapDown, {
+      InteractionDelegateConstants.kLocalPositionX: details.localPosition.dx,
+      InteractionDelegateConstants.kLocalPositionY: details.localPosition.dy,
+    });
+  }
+
+
+  /// Forwards event for the release of the primary button to the preview
+  /// application.
+  void onPointerUp(PointerUpEvent details) async {
+    await await connection.sendRequest(InteractionDelegateConstants.kOnTapUp);
+  }
+
   /// Forwards pointer move events (e.g., the current pointer location) to the
   /// preview application.
-  void onPointerMove(PointerMoveEvent details) {
-    connection.sendNotification(
+  void onPointerMove(PointerMoveEvent details) async {
+    await connection.sendRequest(
       InteractionDelegateConstants.kOnPointerMove,
       {
         InteractionDelegateConstants.kPositionX: details.position.dx,
@@ -180,9 +180,9 @@ class PreviewServer {
   }
 
   /// Forwards mouse wheel scroll events to the preview application.
-  void onPointerSignal(PointerSignalEvent details) {
+  void onPointerSignal(PointerSignalEvent details) async {
     if (details is PointerScrollEvent) {
-      connection.sendNotification(
+      await connection.sendRequest(
         InteractionDelegateConstants.kOnScroll,
         {
           InteractionDelegateConstants.kPositionX: details.position.dx,
@@ -194,50 +194,12 @@ class PreviewServer {
     }
   }
 
-  /// Notifies the preview application that a pan is possibly in-progress.
-  ///
-  /// This is an implementation detail of click-and-drag behavior.
-  void onPanStart(DragStartDetails details) {
-    connection.sendNotification(
-      InteractionDelegateConstants.kOnPanStart,
-      {
-        InteractionDelegateConstants.kPositionX: details.globalPosition.dx,
-        InteractionDelegateConstants.kPositionY: details.globalPosition.dy
-      },
-    );
-  }
-
-  /// Notifies the preview application of updates to an in-progress pan event.
-  ///
-  /// This is an implementation detail of click-and-drag behavior.
-  void onPanUpdate(DragUpdateDetails details) {
-    connection.sendNotification(
-      InteractionDelegateConstants.kOnPanUpdate,
-      {
-        InteractionDelegateConstants.kDeltaX: details.delta.dx,
-        InteractionDelegateConstants.kDeltaY: details.delta.dy,
-      },
-    );
-  }
-
-  /// Notifies the preview application the pan event has concluded.
-  ///
-  /// This is an implementation detail of click-and-drag behavior.
-  void onPanEnd(DragEndDetails details) {
-    connection.sendNotification(
-      InteractionDelegateConstants.kOnPanEnd,
-      {
-        // There's properties we can send here, but they don't seem relevant.
-      },
-    );
-  }
-
   /// Notifies the preview application that a pan/zoom event is possibly
   /// in-progress.
   ///
   /// This is an implementation detail of touchpad scrolling behavior.
-  void onPointerPanZoomStart(PointerPanZoomStartEvent details) {
-    connection.sendNotification(
+  void onPointerPanZoomStart(PointerPanZoomStartEvent details) async {
+    await connection.sendRequest(
       InteractionDelegateConstants.kOnPanZoomStart,
       {
         InteractionDelegateConstants.kPositionX: details.position.dx,
@@ -250,10 +212,9 @@ class PreviewServer {
   /// event.
   ///
   /// This is an implementation detail of touchpad scrolling behavior.
-  void onPointerPanZoomUpdate(PointerPanZoomUpdateEvent details) {
-    // TODO(bkonyi): this isn't calling the right RPC.
-    connection.sendNotification(
-      InteractionDelegateConstants.kOnScroll,
+  void onPointerPanZoomUpdate(PointerPanZoomUpdateEvent details) async {
+    await connection.sendRequest(
+      InteractionDelegateConstants.kOnPanZoomUpdate,
       {
         InteractionDelegateConstants.kPositionX: details.position.dx,
         InteractionDelegateConstants.kPositionY: details.position.dy,
@@ -266,15 +227,15 @@ class PreviewServer {
   /// Notifies the preview application that a pan/zoom event has concluded.
   ///
   /// This is an implementation detail of touchpad scrolling behavior.
-  void onPointerPanZoomEnd(PointerPanZoomEndEvent details) {
-    connection.sendNotification(InteractionDelegateConstants.kOnPanZoomEnd);
+  void onPointerPanZoomEnd(PointerPanZoomEndEvent details) async {
+    await connection.sendRequest(InteractionDelegateConstants.kOnPanZoomEnd);
   }
 
   /// Forwards key presses to the preview application.
   void onKeyEvent(
     KeyEvent event,
-  ) {
-    connection.sendNotification(
+  ) async {
+    await connection.sendRequest(
       switch (event) {
         KeyDownEvent _ => InteractionDelegateConstants.kOnKeyDownEvent,
         KeyUpEvent _ => InteractionDelegateConstants.kOnKeyUpEvent,
@@ -371,36 +332,29 @@ class _PreviewViewerState extends State<PreviewViewer> {
             focusNode: focusNode,
             onKeyEvent: server.onKeyEvent,
             child: Listener(
+              onPointerDown: server.onPointerDown,
+              onPointerUp: server.onPointerUp,
               onPointerMove: server.onPointerMove,
               onPointerHover: server.onPointerHover,
               onPointerSignal: server.onPointerSignal,
-              // TODO(bkonyi): this doesn't provide natural scroll behavior
-              // using a trackpad.
               onPointerPanZoomStart: server.onPointerPanZoomStart,
               onPointerPanZoomUpdate: server.onPointerPanZoomUpdate,
               onPointerPanZoomEnd: server.onPointerPanZoomEnd,
-              child: GestureDetector(
-                onTapDown: server.onTapDown,
-                onDoubleTapDown: server.onDoubleTapDown,
-                onPanStart: server.onPanStart,
-                onPanUpdate: server.onPanUpdate,
-                onPanEnd: server.onPanEnd,
-                child: ValueListenableBuilder<ui.Image?>(
-                  valueListenable: frameDataListenable,
-                  builder: (context, frameData, _) {
-                    if (frameData == null) {
-                      return Text('No frame available');
-                    }
-                    return SizedBox.fromSize(
-                      size: server.windowSize,
-                      child: RawImage(
-                        image: frameData,
-                        width: server.windowSize.width,
-                        height: server.windowSize.height,
-                      ),
-                    );
-                  },
-                ),
+              child: ValueListenableBuilder<ui.Image?>(
+                valueListenable: frameDataListenable,
+                builder: (context, frameData, _) {
+                  if (frameData == null) {
+                    return Text('No frame available');
+                  }
+                  return SizedBox.fromSize(
+                    size: server.windowSize,
+                    child: RawImage(
+                      image: frameData,
+                      width: server.windowSize.width,
+                      height: server.windowSize.height,
+                    ),
+                  );
+                },
               ),
             ),
           );

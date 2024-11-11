@@ -41,39 +41,39 @@ class PreviewClient {
               ..stream.cast<String>().listen(ws.sink.add).onDone(ws.sink.close),
           ),
         ) {
-    connection.registerMethod(
-      'ready',
-      () {
-        notifyWindowSize(
-          initial: true,
-        );
-        WidgetsBinding.instance.addObserver(observer);
-        unawaited(server.sendFrame());
-      },
+    interactionDelegate = InteractionDelegate(
+      connection: connection,
     );
-
-    interactionDelegate.registerInteractionHandlers(connection: connection);
-
-    connection.registerMethod(
-      'setWindowSize',
-      (Parameters params) {
-        final args = params.asMap;
-        print('setWindowSize: $args');
-        server.windowSizeNotifier.value = Size(
-          (args['x'] as num).toDouble(),
-          (args['y'] as num).toDouble(),
-        );
-      },
-    );
-
-    // TODO(bkonyi): use result
-    connection.listen();
+    connection
+      ..registerMethod(
+        'ready',
+        () {
+          notifyWindowSize(
+            initial: true,
+          );
+          WidgetsBinding.instance.addObserver(observer);
+          unawaited(server.sendFrame());
+        },
+      )
+      ..registerMethod(
+        'setWindowSize',
+        (Parameters params) {
+          final args = params.asMap;
+          print('setWindowSize: $args');
+          server.windowSizeNotifier.value = Size(
+            (args['x'] as num).toDouble(),
+            (args['y'] as num).toDouble(),
+          );
+        },
+      )
+      // TODO(bkonyi): use result
+      ..listen();
   }
 
   final PreviewServer server;
   final WebSocketChannel ws;
   final Peer connection;
-  final interactionDelegate = InteractionDelegate();
+  late final InteractionDelegate interactionDelegate;
   late final observer = ScreenSizeChangeObserver(client: this);
 
   void notifyWindowSize({bool initial = false}) {
