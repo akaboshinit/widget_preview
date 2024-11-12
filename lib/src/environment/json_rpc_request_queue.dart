@@ -7,6 +7,7 @@ import 'dart:collection';
 
 import 'package:json_rpc_2/json_rpc_2.dart';
 
+typedef JsonRpcRequestHandler = Future<void> Function(Parameters);
 typedef RequestExecutor = FutureOr<void> Function();
 
 /// A queue used to handle JSON RPC requests in the order they're received.
@@ -31,7 +32,7 @@ class JsonRpcRequestQueue {
 
   final Peer connection;
 
-  void registerMethod(String name, Future<void> Function(Parameters) callback) {
+  void registerMethod(String name, JsonRpcRequestHandler callback) {
     connection.registerMethod(
       name,
       (Parameters params) {
