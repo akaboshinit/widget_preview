@@ -18,8 +18,6 @@ abstract class InteractionDelegateConstants {
   static const kOnPointerMove = 'onPointerMove';
   static const kOnPointerHover = 'onPointerHover';
 
-  static const kPositionX = 'positionX';
-  static const kPositionY = 'positionY';
   static const kLocalPositionX = 'localPositionX';
   static const kLocalPositionY = 'localPositionY';
   static const kDeltaX = 'deltaX';

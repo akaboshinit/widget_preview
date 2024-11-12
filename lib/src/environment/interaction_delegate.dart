@@ -71,8 +71,8 @@ class InteractionDelegate {
         (Parameters params) async {
           final args = params.asMap;
           final position = Offset(
-            args[InteractionDelegateConstants.kPositionX] as double,
-            args[InteractionDelegateConstants.kPositionY] as double,
+            args[InteractionDelegateConstants.kLocalPositionX] as double,
+            args[InteractionDelegateConstants.kLocalPositionY] as double,
           );
           final scrollDelta = Offset(
             args[InteractionDelegateConstants.kDeltaX] as double,
@@ -91,8 +91,8 @@ class InteractionDelegate {
         (Parameters params) async {
           final args = params.asMap;
           final position = Offset(
-            args[InteractionDelegateConstants.kPositionX] as double,
-            args[InteractionDelegateConstants.kPositionY] as double,
+            args[InteractionDelegateConstants.kLocalPositionX] as double,
+            args[InteractionDelegateConstants.kLocalPositionY] as double,
           );
           await controller.sendEventToBinding(pointerHandler.hover(position));
         },
@@ -103,8 +103,8 @@ class InteractionDelegate {
         (Parameters params) async {
           final args = params.asMap;
           final position = Offset(
-            args[InteractionDelegateConstants.kPositionX] as double,
-            args[InteractionDelegateConstants.kPositionY] as double,
+            args[InteractionDelegateConstants.kLocalPositionX] as double,
+            args[InteractionDelegateConstants.kLocalPositionY] as double,
           );
           final buttons = args[InteractionDelegateConstants.kButtons] as int;
           await controller.sendEventToBinding(
@@ -122,8 +122,8 @@ class InteractionDelegate {
         (Parameters params) async {
           final args = params.asMap;
           final position = Offset(
-            args[InteractionDelegateConstants.kPositionX] as double,
-            args[InteractionDelegateConstants.kPositionY] as double,
+            args[InteractionDelegateConstants.kLocalPositionX] as double,
+            args[InteractionDelegateConstants.kLocalPositionY] as double,
           );
           await controller.sendEventToBinding(
             pointerHandler.panZoomStart(position),
@@ -137,8 +137,8 @@ class InteractionDelegate {
         (Parameters params) async {
           final args = params.asMap;
           final position = Offset(
-            args[InteractionDelegateConstants.kPositionX] as double,
-            args[InteractionDelegateConstants.kPositionY] as double,
+            args[InteractionDelegateConstants.kLocalPositionX] as double,
+            args[InteractionDelegateConstants.kLocalPositionY] as double,
           );
           final panDelta = Offset(
             args[InteractionDelegateConstants.kDeltaX] as double,

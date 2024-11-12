@@ -85,8 +85,8 @@ class PreviewClient {
       'windowSize',
       {
         'initial': initial,
-        'height': size.height / pixelRatio,
-        'width': size.width / pixelRatio,
+        'height': size.height,
+        'width': size.width,
         'pixelRatio': pixelRatio,
       },
     );
@@ -146,12 +146,16 @@ class PreviewServer {
   bool sendingFrame = false;
 
   Future<void> sendFrame() async {
+    if (sendingFrame) {
+      return;
+    }
     sendingFrame = true;
     final renderView =
         WidgetsBinding.instance.rootElement!.renderObject as RenderView;
     final layer = renderView.debugLayer! as OffsetLayer;
     final image = await layer.toImage(
-      Offset.zero & (renderView.size * renderView.flutterView.devicePixelRatio),
+      Offset.zero & renderView.size,
+      pixelRatio: renderView.flutterView.devicePixelRatio,
     );
     final data = (await image.toByteData())!.buffer.asUint8List();
     image.dispose();

@@ -144,8 +144,8 @@ class PreviewServer {
     await connection.sendRequest(
       InteractionDelegateConstants.kOnPointerHover,
       {
-        InteractionDelegateConstants.kPositionX: details.position.dx,
-        InteractionDelegateConstants.kPositionY: details.position.dy,
+        InteractionDelegateConstants.kLocalPositionX: details.localPosition.dx,
+        InteractionDelegateConstants.kLocalPositionY: details.localPosition.dy,
       },
     );
   }
@@ -172,8 +172,8 @@ class PreviewServer {
     await connection.sendRequest(
       InteractionDelegateConstants.kOnPointerMove,
       {
-        InteractionDelegateConstants.kPositionX: details.position.dx,
-        InteractionDelegateConstants.kPositionY: details.position.dy,
+        InteractionDelegateConstants.kLocalPositionX: details.localPosition.dx,
+        InteractionDelegateConstants.kLocalPositionY: details.localPosition.dy,
         InteractionDelegateConstants.kButtons: details.buttons,
       },
     );
@@ -185,8 +185,8 @@ class PreviewServer {
       await connection.sendRequest(
         InteractionDelegateConstants.kOnScroll,
         {
-          InteractionDelegateConstants.kPositionX: details.position.dx,
-          InteractionDelegateConstants.kPositionY: details.position.dy,
+          InteractionDelegateConstants.kLocalPositionX: details.localPosition.dx,
+          InteractionDelegateConstants.kLocalPositionY: details.localPosition.dy,
           InteractionDelegateConstants.kDeltaX: details.scrollDelta.dx,
           InteractionDelegateConstants.kDeltaY: details.scrollDelta.dy,
         },
@@ -202,8 +202,8 @@ class PreviewServer {
     await connection.sendRequest(
       InteractionDelegateConstants.kOnPanZoomStart,
       {
-        InteractionDelegateConstants.kPositionX: details.position.dx,
-        InteractionDelegateConstants.kPositionY: details.position.dy,
+        InteractionDelegateConstants.kLocalPositionX: details.localPosition.dx,
+        InteractionDelegateConstants.kLocalPositionY: details.localPosition.dy,
       },
     );
   }
@@ -216,8 +216,8 @@ class PreviewServer {
     await connection.sendRequest(
       InteractionDelegateConstants.kOnPanZoomUpdate,
       {
-        InteractionDelegateConstants.kPositionX: details.position.dx,
-        InteractionDelegateConstants.kPositionY: details.position.dy,
+        InteractionDelegateConstants.kLocalPositionX: details.localPosition.dx,
+        InteractionDelegateConstants.kLocalPositionY: details.localPosition.dy,
         InteractionDelegateConstants.kDeltaX: details.pan.dx,
         InteractionDelegateConstants.kDeltaY: details.pan.dy,
       },
