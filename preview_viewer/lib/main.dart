@@ -129,13 +129,13 @@ class PreviewServer {
   /// Notifies the remote preview application that the preview viewer's window
   /// size has changed.
   void sendWindowSize() async {
-    // TODO(bkonyi): revisit this logic to make sure we're handling pixel ratios right.
     final view = WidgetsBinding.instance.platformDispatcher.views.first;
     final size = view.physicalSize;
     final pixelRatio = view.devicePixelRatio;
     await connection.sendRequest('setWindowSize', {
-      'x': size.width / pixelRatio,
-      'y': size.height / pixelRatio,
+      'x': size.width,
+      'y': size.height,
+      'devicePixelRatio': pixelRatio,
     });
   }
 
@@ -263,6 +263,7 @@ class PreviewViewerApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
+      themeMode: ThemeMode.dark,
       home: const PreviewViewer(),
     );
   }
@@ -320,45 +321,45 @@ class _PreviewViewerState extends State<PreviewViewer> {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: FutureBuilder(
-        future: server.ready,
-        builder: (_, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
-            return Text('Connecting...');
-          }
-          return KeyboardListener(
-            autofocus: true,
-            focusNode: focusNode,
-            onKeyEvent: server.onKeyEvent,
-            child: Listener(
-              onPointerDown: server.onPointerDown,
-              onPointerUp: server.onPointerUp,
-              onPointerMove: server.onPointerMove,
-              onPointerHover: server.onPointerHover,
-              onPointerSignal: server.onPointerSignal,
-              onPointerPanZoomStart: server.onPointerPanZoomStart,
-              onPointerPanZoomUpdate: server.onPointerPanZoomUpdate,
-              onPointerPanZoomEnd: server.onPointerPanZoomEnd,
-              child: ValueListenableBuilder<ui.Image?>(
-                valueListenable: frameDataListenable,
-                builder: (context, frameData, _) {
-                  if (frameData == null) {
-                    return Text('No frame available');
-                  }
-                  return SizedBox.fromSize(
-                    size: server.windowSize,
-                    child: RawImage(
+    return Container(
+      color: Colors.black,
+      child: Center(
+        child: FutureBuilder(
+          future: server.ready,
+          builder: (_, snapshot) {
+            if (snapshot.connectionState != ConnectionState.done) {
+              return Text('Connecting...');
+            }
+            return KeyboardListener(
+              autofocus: true,
+              focusNode: focusNode,
+              onKeyEvent: server.onKeyEvent,
+              child: Listener(
+                onPointerDown: server.onPointerDown,
+                onPointerUp: server.onPointerUp,
+                onPointerMove: server.onPointerMove,
+                onPointerHover: server.onPointerHover,
+                onPointerSignal: server.onPointerSignal,
+                onPointerPanZoomStart: server.onPointerPanZoomStart,
+                onPointerPanZoomUpdate: server.onPointerPanZoomUpdate,
+                onPointerPanZoomEnd: server.onPointerPanZoomEnd,
+                child: ValueListenableBuilder<ui.Image?>(
+                  valueListenable: frameDataListenable,
+                  builder: (context, frameData, _) {
+                    if (frameData == null) {
+                      return Text('No frame available');
+                    }
+                    return RawImage(
                       image: frameData,
-                      width: server.windowSize.width,
-                      height: server.windowSize.height,
-                    ),
-                  );
-                },
+                      width: server.windowSize.width * server.pixelRatio,
+                      height: server.windowSize.height * server.pixelRatio,
+                    );
+                  },
+                ),
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }

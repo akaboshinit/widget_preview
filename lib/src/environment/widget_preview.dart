@@ -189,13 +189,16 @@ class _WidgetPreviewState extends State<WidgetPreview> {
               ],
             );
 
-            return Card(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 16.0,
-                  horizontal: 16.0,
+            return Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 16.0,
+                    horizontal: 16.0,
+                  ),
+                  child: preview,
                 ),
-                child: preview,
               ),
             );
           },

@@ -15,6 +15,7 @@ import 'json_rpc_request_queue.dart';
 import 'text_input_handler.dart';
 import 'widget_preview.dart';
 
+// TODO(bkonyi): handle keyboard shortcuts and clipboard operations.
 /// Replays user interactions sent from the preview viewer in the actual
 /// preview environment.
 class InteractionDelegate {
@@ -46,8 +47,10 @@ class InteractionDelegate {
         (Parameters params) async {
           final args = params.asMap;
           final offset = Offset(
-            args[InteractionDelegateConstants.kLocalPositionX] as double,
-            args[InteractionDelegateConstants.kLocalPositionY] as double,
+            (args[InteractionDelegateConstants.kLocalPositionX] as num)
+                .toDouble(),
+            (args[InteractionDelegateConstants.kLocalPositionY] as num)
+                .toDouble(),
           );
           final scaffoldOffset = controller.getTopLeft(
             find.byType(WidgetPreviewerWindowConstraints),
@@ -71,12 +74,14 @@ class InteractionDelegate {
         (Parameters params) async {
           final args = params.asMap;
           final position = Offset(
-            args[InteractionDelegateConstants.kLocalPositionX] as double,
-            args[InteractionDelegateConstants.kLocalPositionY] as double,
+            (args[InteractionDelegateConstants.kLocalPositionX] as num)
+                .toDouble(),
+            (args[InteractionDelegateConstants.kLocalPositionY] as num)
+                .toDouble(),
           );
           final scrollDelta = Offset(
-            args[InteractionDelegateConstants.kDeltaX] as double,
-            args[InteractionDelegateConstants.kDeltaY] as double,
+            (args[InteractionDelegateConstants.kDeltaX] as num).toDouble(),
+            (args[InteractionDelegateConstants.kDeltaY] as num).toDouble(),
           );
           pointerHandler.hover(position);
           await controller.sendEventToBinding(
@@ -91,8 +96,10 @@ class InteractionDelegate {
         (Parameters params) async {
           final args = params.asMap;
           final position = Offset(
-            args[InteractionDelegateConstants.kLocalPositionX] as double,
-            args[InteractionDelegateConstants.kLocalPositionY] as double,
+            (args[InteractionDelegateConstants.kLocalPositionX] as num)
+                .toDouble(),
+            (args[InteractionDelegateConstants.kLocalPositionY] as num)
+                .toDouble(),
           );
           await controller.sendEventToBinding(pointerHandler.hover(position));
         },
@@ -103,8 +110,10 @@ class InteractionDelegate {
         (Parameters params) async {
           final args = params.asMap;
           final position = Offset(
-            args[InteractionDelegateConstants.kLocalPositionX] as double,
-            args[InteractionDelegateConstants.kLocalPositionY] as double,
+            (args[InteractionDelegateConstants.kLocalPositionX] as num)
+                .toDouble(),
+            (args[InteractionDelegateConstants.kLocalPositionY] as num)
+                .toDouble(),
           );
           final buttons = args[InteractionDelegateConstants.kButtons] as int;
           await controller.sendEventToBinding(
@@ -122,8 +131,10 @@ class InteractionDelegate {
         (Parameters params) async {
           final args = params.asMap;
           final position = Offset(
-            args[InteractionDelegateConstants.kLocalPositionX] as double,
-            args[InteractionDelegateConstants.kLocalPositionY] as double,
+            (args[InteractionDelegateConstants.kLocalPositionX] as num)
+                .toDouble(),
+            (args[InteractionDelegateConstants.kLocalPositionY] as num)
+                .toDouble(),
           );
           await controller.sendEventToBinding(
             pointerHandler.panZoomStart(position),
@@ -137,12 +148,14 @@ class InteractionDelegate {
         (Parameters params) async {
           final args = params.asMap;
           final position = Offset(
-            args[InteractionDelegateConstants.kLocalPositionX] as double,
-            args[InteractionDelegateConstants.kLocalPositionY] as double,
+            (args[InteractionDelegateConstants.kLocalPositionX] as num)
+                .toDouble(),
+            (args[InteractionDelegateConstants.kLocalPositionY] as num)
+                .toDouble(),
           );
           final panDelta = Offset(
-            args[InteractionDelegateConstants.kDeltaX] as double,
-            args[InteractionDelegateConstants.kDeltaY] as double,
+            (args[InteractionDelegateConstants.kDeltaX] as num).toDouble(),
+            (args[InteractionDelegateConstants.kDeltaY] as num).toDouble(),
           );
           await controller.sendEventToBinding(
             pointerHandler.panZoomUpdate(
