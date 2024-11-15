@@ -33,6 +33,7 @@ class InteractionDelegate {
 
   /// Used to create pointer events to be dispatched to [controller].
   final pointerHandler = TestPointer(1, PointerDeviceKind.mouse);
+  final touchPadPointerHandler = TestPointer(2, PointerDeviceKind.trackpad);
 
   /// Handles replaying text input to text fields.
   final textInputHandler = PreviewTextInput();
@@ -137,7 +138,7 @@ class InteractionDelegate {
                 .toDouble(),
           );
           await controller.sendEventToBinding(
-            pointerHandler.panZoomStart(position),
+            touchPadPointerHandler.panZoomStart(position),
           );
         },
       )
@@ -158,7 +159,7 @@ class InteractionDelegate {
             (args[InteractionDelegateConstants.kDeltaY] as num).toDouble(),
           );
           await controller.sendEventToBinding(
-            pointerHandler.panZoomUpdate(
+            touchPadPointerHandler.panZoomUpdate(
               position,
               pan: panDelta,
             ),
@@ -170,7 +171,7 @@ class InteractionDelegate {
         // scrolling.
         InteractionDelegateConstants.kOnPanZoomEnd,
         (Parameters _) async {
-          await controller.sendEventToBinding(pointerHandler.panZoomEnd());
+          await controller.sendEventToBinding(touchPadPointerHandler.panZoomEnd());
         },
       )
       ..registerMethod(
