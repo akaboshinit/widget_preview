@@ -98,11 +98,11 @@ class WidgetPreviewEnvironment {
     logger.info(Uri(path: previewScaffoldProjectPath).resolve('lib/main.dart'));
     logger.info('Writing preview scaffolding entry point...');
 
-    // widget_preview_scaffold.dart contains the contents of main.dart for the
+    // widget_preview_scaffold_main.dart contains the contents of main.dart for the
     // generated preview environment.
     await File.fromUri(
       Platform.script.resolve(
-        '../lib/src/environment/widget_preview_scaffold.dart',
+        '../lib/src/environment/widget_preview_scaffold_main.dart',
       ),
     ).copy(
       Uri(path: previewScaffoldProjectPath).resolve('lib/main.dart').toString(),

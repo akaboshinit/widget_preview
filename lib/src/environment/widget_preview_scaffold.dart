@@ -3,20 +3,13 @@
 // found in the LICENSE file.
 
 import 'dart:async';
-import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-// ignore: prefer_relative_imports, this won't be a relative import in the preview environment.
-import 'package:widget_preview/src/environment/frame_streamer.dart';
-// ignore: prefer_relative_imports, this won't be a relative import in the preview environment.
-import 'package:widget_preview/src/environment/preview_binding.dart';
-// ignore: prefer_relative_imports, this won't be a relative import in the preview environment.
-import 'package:widget_preview/src/environment/widget_preview.dart';
-
-// ignore: uri_does_not_exist, will be generated.
-import 'generated_preview.dart';
+import 'frame_streamer.dart';
+import 'preview_binding.dart';
+import 'widget_preview.dart';
 
 /// Custom [AssetBundle] used to map original asset paths from the parent
 /// project to those in the preview project.
@@ -49,7 +42,14 @@ class PreviewAssetBundle extends PlatformAssetBundle {
   }
 }
 
-Future<void> main() async {
+/// Main entrypoint for the widget previewer.
+///
+/// We don't actually define this as `main` to avoid copying this file into
+/// the preview scaffold project which prevents us from being able to use hot
+/// restart to iterate on this file.
+Future<void> mainImpl({
+  required List<WidgetPreview> Function() previewsProvider,
+}) async {
   BindingBase.debugZoneErrorsAreFatal = true;
   final completer = Completer<void>();
 
@@ -57,7 +57,9 @@ Future<void> main() async {
     (_) => completer.complete(),
   );
   runApp(
-    const WidgetPreviewScaffold(),
+    WidgetPreviewScaffold(
+      previewsProvider: previewsProvider,
+    ),
   );
 
   // Wait for the binding to be initialized so we can initialize
@@ -72,12 +74,13 @@ Future<void> main() async {
 }
 
 class WidgetPreviewScaffold extends StatelessWidget {
-  const WidgetPreviewScaffold({super.key});
+  const WidgetPreviewScaffold({super.key, required this.previewsProvider});
+
+  final List<WidgetPreview> Function() previewsProvider;
 
   @override
   Widget build(BuildContext context) {
-    // ignore: undefined_method, will be present in generated_preview.dart.
-    final previewList = previews();
+    final previewList = previewsProvider();
     Widget previewView;
     if (previewList.isEmpty) {
       previewView = const Column(
