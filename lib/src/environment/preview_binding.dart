@@ -54,6 +54,13 @@ class PreviewWidgetsFlutterBinding extends WidgetsFlutterBinding {
     return config;
   }
 
+  @override
+  void scheduleFrame() {
+    // Bypass application lifecycle checks that would prevent frames from being
+    // rendered while the preview application is backgrounded or not visible.
+    scheduleForcedFrame();
+  }
+
   void _assertBindingInitialized() {
     assert(
       _instance != null,
