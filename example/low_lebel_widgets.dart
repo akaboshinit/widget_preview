@@ -48,6 +48,19 @@ class UserProfile extends StatelessWidget {
   }
 }
 
+class TextFieldTest extends StatelessWidget {
+  const TextFieldTest({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const TextField(
+      decoration: InputDecoration(
+        hintText: 'Enter your name',
+      ),
+    );
+  }
+}
+
 @Preview()
 List<WidgetPreview> preview() => [
       const WidgetPreview(child: Text1(), name: 'Text1'),
@@ -58,5 +71,6 @@ List<WidgetPreview> preview() => [
           bio: 'Software Engineer',
           avatarUrl: 'https://avatars.githubusercontent.com/u/12345678',
         ),
-      )
+      ),
+      const WidgetPreview(child: TextFieldTest(), name: 'TextFieldTest'),
     ];

@@ -255,6 +255,7 @@ class WidgetPreviewEnvironment {
     final projectDir = Directory.current.uri.toFilePath();
     final tempDir = await Directory.systemTemp.createTemp();
     _vmServiceInfoPath = path.join(tempDir.path, 'preview_vm_service.json');
+    logger.info('VM service info path: $_vmServiceInfoPath');
     final process = await runInDirectoryScope<Process>(
       path: previewScaffoldProjectPath,
       callback: () async {

@@ -54,26 +54,32 @@ class Dashboard extends StatelessWidget {
       ),
     ];
 
-    return SizedBox(
-      height: 200,
-      child: GridView.builder(
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 6, // 2カラムにする
-          crossAxisSpacing: 10,
-          mainAxisSpacing: 10,
-          childAspectRatio: 1, // セクションカードの縦横比
+    return Column(
+      children: [
+        const CircularProgressIndicator.adaptive(),
+        Text('Dashboard', style: Theme.of(context).textTheme.bodyLarge),
+        SizedBox(
+          height: 200,
+          child: GridView.builder(
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 6, // 2カラムにする
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 10,
+              childAspectRatio: 1, // セクションカードの縦横比
+            ),
+            itemCount: sectionData.length,
+            itemBuilder: (context, index) {
+              final data = sectionData[index];
+              return _DashboardSection(
+                title: data.title,
+                value: data.value,
+                icon: data.icon,
+                color: data.color,
+              );
+            },
+          ),
         ),
-        itemCount: sectionData.length,
-        itemBuilder: (context, index) {
-          final data = sectionData[index];
-          return _DashboardSection(
-            title: data.title,
-            value: data.value,
-            icon: data.icon,
-            color: data.color,
-          );
-        },
-      ),
+      ],
     );
   }
 }
@@ -310,45 +316,78 @@ class RippleAnimationState extends State<RippleAnimation>
   }
 }
 
-@Preview()
-List<WidgetPreview> preview() => [
-      const WidgetPreview(child: Dashboard(), name: 'Dashboard'),
-      WidgetPreview(
-        child: const Dashboard(),
-        name: 'Dashboard on Android Phone',
-        device: DeviceInfo.genericPhone(
-          screenSize: const Size(360, 640),
-          pixelRatio: 2.0,
-          platform: TargetPlatform.android,
-          id: 'android',
-          name: 'Android Phone',
-        ),
-      ),
-      const WidgetPreview(
-        child: Dashboard(),
-        name: 'Dashboard textScaleFactor: 3',
-        textScaleFactor: 3,
-      ),
-      WidgetPreview(
-        child: const Dashboard(),
-        name: 'Dashboard dark theme',
-        theme: ThemeData.light(),
-        darkTheme: ThemeData.dark().copyWith(
-          textTheme: ThemeData.dark().textTheme.copyWith(
-                bodyMedium: const TextStyle(
-                  fontSize: 16,
-                  color: Colors.red,
-                ),
-              ),
-        ),
-      ),
-      const WidgetPreview(
-          child: RotatingFadingBox(), name: 'RotatingFadingBox'),
-      const WidgetPreview(
-        child: SizedBox(
-          height: 100,
-          child: TapEffectWidget(),
-        ),
-        name: 'TapEffectWidget',
-      ),
-    ];
+// @Preview()
+// List<WidgetPreview> preview() => [
+//       const WidgetPreview(child: Dashboard(), name: 'Dashboard'),
+//       WidgetPreview(
+//         child: const Dashboard(),
+//         name: 'Dashboard on Android Phone',
+//         device: DeviceInfo.genericPhone(
+//           screenSize: const Size(360, 640),
+//           pixelRatio: 2.0,
+//           platform: TargetPlatform.android,
+//           id: 'android',
+//           name: 'Android Phone',
+//         ),
+//       ),
+//       WidgetPreview(
+//         child: const Dashboard(),
+//         name: 'Dashboard on iOS Phone',
+//         orientation: Orientation.landscape,
+//         device: DeviceInfo.genericPhone(
+//           screenSize: const Size(360, 640),
+//           pixelRatio: 2.0,
+//           platform: TargetPlatform.iOS,
+//           id: 'ios',
+//           name: 'iOS Phone',
+//         ),
+//       ),
+//       const WidgetPreview(
+//         child: Dashboard(),
+//         name: 'Dashboard textScaleFactor: 3',
+//         textScaleFactor: 3,
+//       ),
+//       WidgetPreview(
+//         child: const Dashboard(),
+//         name: 'Dashboard dark theme',
+//         theme: ThemeData.light(),
+//         darkTheme: ThemeData.dark().copyWith(
+//           textTheme: ThemeData.dark().textTheme.copyWith(
+//                 bodyMedium: const TextStyle(
+//                   fontSize: 16,
+//                   color: Colors.red,
+//                 ),
+//               ),
+//         ),
+//       ),
+//       WidgetPreview(
+//         child: const Dashboard(),
+//         name: 'Dashboard android dark theme',
+//         platformBrightness: Brightness.light,
+//         theme: ThemeData.light().copyWith(
+//           platform: TargetPlatform.android,
+//         ),
+//         darkTheme: ThemeData.dark().copyWith(
+//           platform: TargetPlatform.android,
+//           textTheme: ThemeData.dark().textTheme.copyWith(
+//                 bodyLarge: const TextStyle(
+//                   fontSize: 16,
+//                   color: Colors.blue,
+//                 ),
+//                 bodyMedium: const TextStyle(
+//                   fontSize: 16,
+//                   color: Colors.red,
+//                 ),
+//               ),
+//         ),
+//       ),
+//       const WidgetPreview(
+//           child: RotatingFadingBox(), name: 'RotatingFadingBox'),
+//       const WidgetPreview(
+//         child: SizedBox(
+//           height: 100,
+//           child: TapEffectWidget(),
+//         ),
+//         name: 'TapEffectWidget',
+//       ),
+//     ];
