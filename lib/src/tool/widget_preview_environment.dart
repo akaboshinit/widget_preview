@@ -32,7 +32,7 @@ const shouldUsePrebuiltBinary =
     !bool.fromEnvironment(shouldUsePrebuiltBinaryVar);
 
 /// Specifies if flutter_tester should be used.
-/// 
+///
 /// This results in the preview viewer having a poor frame rate as the
 /// flutter_tester uses software rendering.
 const shouldUseDesktopEmbedderVar = 'USE_FLUTTER_TESTER';
@@ -175,20 +175,28 @@ class WidgetPreviewEnvironment {
 
         final lib = context.currentSession.getParsedLibrary(filePath);
         if (lib is ParsedLibraryResult) {
+          logger.info('Found library at $filePath');
           for (final unit in lib.units) {
+            logger.info('Analyzing unit: ${unit.uri}');
             final previewEntries =
                 previews.putIfAbsent(unit.uri.toString(), () => <String>[]);
             for (final entity in unit.unit.childEntities) {
+              logger.info('Analyzing entity: $entity');
               if (entity is FunctionDeclaration &&
                   !entity.name.toString().startsWith('_')) {
+                logger.info('Function name: ${entity.name}');
+                logger.info('Metadata: ${entity.metadata}');
                 var foundPreview = false;
                 for (final annotation in entity.metadata) {
+                  logger.info('Found annotation: ${annotation.name}');
                   if (annotation.name.name == 'Preview') {
+                    logger.info('Found preview annotation!');
                     // What happens if the annotation is applied multiple times?
                     foundPreview = true;
                     break;
                   }
                 }
+                logger.info('foundPreview: $foundPreview');
                 if (foundPreview) {
                   logger.info('Found preview at:');
                   logger.info('File path: ${unit.uri}');
@@ -247,6 +255,7 @@ class WidgetPreviewEnvironment {
     final projectDir = Directory.current.uri.toFilePath();
     final tempDir = await Directory.systemTemp.createTemp();
     _vmServiceInfoPath = path.join(tempDir.path, 'preview_vm_service.json');
+    logger.info('VM service info path: $_vmServiceInfoPath');
     final process = await runInDirectoryScope<Process>(
       path: previewScaffoldProjectPath,
       callback: () async {
